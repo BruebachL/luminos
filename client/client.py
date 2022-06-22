@@ -178,13 +178,16 @@ class BasicWindow(QWidget):
                 file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 file_host = host
                 file_sock.connect((file_host, listen_up.port))
+                length = listen_up.length
                 data = b''
-                while True:
-                    buf = file_sock.recv(1024)
-                    if not buf:
-                        break
-                    data += buf
-                file_to_write = open("../test.png", "bw")
+                left_to_receive = length
+                while len(data) != length:
+                    file_sock.setblocking(True)
+                    received = file_sock.recv(left_to_receive)
+                    data = data + received
+                    left_to_receive = left_to_receive - (len(received))
+                file_sock.setblocking(False)
+                file_to_write = open(base_path.joinpath(listen_up.file_name), "bw")
                 file_to_write.write(data)
             case CommandDiceRequest():
                 cmd = json.loads(str(response), object_hook=decode_command_dice_request)

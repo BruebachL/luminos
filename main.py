@@ -109,7 +109,9 @@ class ThreadedServer(object):
 
     def fulfill_dice_request(self, dice, client, port):
         file = open(dice.image_path, "rb")
-        threading.Thread(target=self.send_file_to_client, args=(file, client, port)).start()
+        file_length = os.path.getsize(dice.image_path)
+        file_name = dice.image_path
+        threading.Thread(target=self.send_file_to_client, args=(file, file_length, file_name, client, port)).start()
 
     def listen(self):
         self.sock.listen(5)
@@ -123,11 +125,11 @@ class ThreadedServer(object):
         for connected_client in self.connected_clients:
             self.announce_length_and_send(connected_client, response)
 
-    def send_file_to_client(self, file, client, port):
+    def send_file_to_client(self, file, file_length, file_name, client, port):
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         file_socket.bind((self.host, port))
-        self.announce_length_and_send(client, bytes(json.dumps(CommandListenUp(port), cls=CommandListenUpEncoder), "UTF-8"))
+        self.announce_length_and_send(client, bytes(json.dumps(CommandListenUp(port, file_length, file_name), cls=CommandListenUpEncoder), "UTF-8"))
         file_socket.listen(5)
         while True:
             file_client, file_address = file_socket.accept()
