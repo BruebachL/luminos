@@ -25,8 +25,8 @@ class DiceRollViewerRow(QWidget):
                 "color: white;")
         self.current_dice_skin = 0
         for i in range(len(self.dice_rolls)):
-            if self.current_dice_skin >= len(self.dice_skins):
+            if self.current_dice_skin >= len(self.dice_skins) - 1:
                 self.current_dice_skin = 0
-            layout.addWidget(DiceRollWidget(self.dice_manager, self.current_dice_skin, str(self.dice_rolls[i])))
+            layout.addWidget(DiceRollWidget(self.dice_manager, self.dice_skins[self.current_dice_skin], str(self.dice_rolls[i])))
             self.current_dice_skin = self.current_dice_skin + 1
         self.setLayout(layout)
