@@ -1,10 +1,9 @@
 import json
+import random
 
 from PyQt5.QtWidgets import QGridLayout, QPushButton
 
 from commands.command_roll_dice import CommandRollDiceEncoder, CommandRollDice
-
-dice_to_use = ["Galaxy", "Nebula", "Bubblegum Sky"]
 
 class DiceRollButtonLayout(QGridLayout):
     def __init__(self, output_buffer, player, dice_manager):
@@ -13,6 +12,10 @@ class DiceRollButtonLayout(QGridLayout):
         self.dice_manager = dice_manager
         self.player = player
         self.add_buttons()
+        self.dice_to_use = []
+        if len(self.dice_manager.use_dice) > 0:
+            self.dice_to_use.append(
+                self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].name)
 
     def add_buttons(self):
         roll_button = QPushButton()
@@ -52,31 +55,31 @@ class DiceRollButtonLayout(QGridLayout):
 
     def roll_d2(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 1, 2, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 1, 2, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 
     def roll_d4(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 1, 4, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 1, 4, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 
     def roll_d6(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 1, 6, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 1, 6, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 
     def roll_d8(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 1, 8, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 1, 8, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 
     def roll_d10(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 1, 10, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 1, 10, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 
     def roll_d20(self):
         self.output_buffer.append(bytes(
-            json.dumps(CommandRollDice(self.player, 3, 20, "the hell of it", 10, 0, dice_to_use),
+            json.dumps(CommandRollDice(self.player, 3, 20, "the hell of it", 10, 0, self.dice_to_use),
                        cls=CommandRollDiceEncoder), "UTF-8"))
 

@@ -17,8 +17,13 @@ class GameState:
         rolls = self.roll_dice(roll.amount, roll.sides)
         diffs = 0
         for i in range(len(rolls)):
-            if rolls[i] >= int(roll.rolled_against[i]):
-                diffs = diffs + (rolls[i] - int(roll.rolled_against[i]))
+            if isinstance(roll.rolled_against, int):
+                if rolls[i] >= int(roll.rolled_against):
+                    diffs = diffs + (rolls[i] - int(roll.rolled_against))
+            else:
+                if rolls[i] >= int(roll.rolled_against[i]):
+                    diffs = diffs + (rolls[i] - int(roll.rolled_against[i]))
+
         roll = json.dumps(InfoRollDice(roll.character, rolls, roll.sides, roll.rolled_for, roll.rolled_against, (True if diffs < roll.equalizer else False), roll.dice_skins), cls=InfoRollDiceEncoder)
         self.last_dice_rolls.append(roll)
         self.lock.release()
