@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 import os
@@ -100,7 +101,9 @@ class BasicWindow(QWidget):
         left_to_receive = length
         while len(data) != length:
             server.setblocking(True)
-            received = str(server.recv(left_to_receive), "UTF-8")
+            partial_data = server.recv(left_to_receive)
+            print(partial_data)
+            received = str(partial_data, "UTF-8")
             data = data + received
             left_to_receive = left_to_receive - (len(received))
         server.setblocking(False)
@@ -124,6 +127,7 @@ class BasicWindow(QWidget):
                 break
             else:
                 if received_command != "None":
+                    print(cmd)
                     self.process_server_response(cmd)
 
         for write_sock in write_sockets:
@@ -152,7 +156,13 @@ class BasicWindow(QWidget):
                                 if isinstance(info_response, InfoDiceRequest):
                                     file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                                     file_host = host
-                                    file_sock.connect((file_host, info_response.port))
+                                    not_connected = True
+                                    while not_connected:
+                                        try:
+                                            file_sock.connect((file_host, info_response.port))
+                                            not_connected = False
+                                        except:
+                                            print("Waiting for connection")
                                     length = info_response.length
                                     data = b''
                                     left_to_receive = length
@@ -230,6 +240,11 @@ def save_to_file(character_to_write):
 if __name__ == '__main__':
     try:
         time.sleep(1)
+        parser = argparse.ArgumentParser(description='Homebrew DnD Tool.')
+        parser.add_argument('--ip', help='Server IP')
+        args = parser.parse_args()
+        if args.ip is not None:
+            host = args.ip
         app = QApplication(sys.argv)
         sock.connect((host, port))
         sock.setblocking(False)
