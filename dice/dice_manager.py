@@ -64,7 +64,8 @@ class DiceManager(QWidget):
         not_available = []
         for dice in dice_to_check:
             if self.get_dice_for_name(dice) is None:
-                not_available.append(dice)
+                if dice not in not_available:
+                    not_available.append(dice)
         if len(not_available) > 0:
             return not_available
         else:
