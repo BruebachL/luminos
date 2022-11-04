@@ -94,74 +94,27 @@ class BasicWindow(QWidget):
 
         return splash_screen
 
+
     def close_splash(self):
         self.splash_screen.close()
         self.show()
 
-    def attempt_reconnect_to_server(self):
-        not_connected = True
-        while not_connected:
-            try:
-                self.log.debug("Attempting to connect to {}:{}".format(self.server_ip, self.server_port))
-                self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connected_socket.connect((self.server_ip, self.server_port))
-                self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
-                #self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
-                not_connected = False
-            except socket.error:
-                self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
-                time.sleep(1)
+    def dice_roll_manager_tab_ui(self):
+        """Create the General page UI."""
+        generalTab = QWidget()
+        self.grid_layout = DiceRollManagerLayout(self.output_buffer, player, self.dice_manager)
+        generalTab.setLayout(self.grid_layout)
+        return generalTab
 
-    def get_free_port(self):
-        self.file_port = self.file_port + 1
-        if self.file_port == 1350:
-            self.file_port = 1339
-        return self.file_port
+    def character_tab_ui(self):
+        """Create the Character page UI."""
+        return CharacterWidget(player, self.character, self.dice_manager, self.output_buffer)
 
-    def send_file_to_server(self, file, file_port):
-        file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        file_socket.bind((self.server_ip, file_port))
-        file_socket.listen(5)
-        file_client, file_address = file_socket.accept()
-        file_socket.settimeout(60)
-        file_client.sendfile(file)
-        file_socket.close()
+    ####################################################################################################################
+    #                                                Network                                                           #
+    ####################################################################################################################
 
-    def decode_server_command(self, command):
-        if isinstance(command, str):
-            command = json.loads(command)
-        return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                          object_hook=decode_command)
-
-    def listen_until_all_data_received(self, server):
-        self.client_sequence_log.debug(
-            "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
-        length = int.from_bytes(server.recv(12), 'big')
-        self.client_sequence_log.debug(
-            "Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") announced " + str(
-                length) + " of data.")
-        data = ""
-        left_to_receive = length
-        while len(data) != length:
-            server.setblocking(True)
-            partial_data = server.recv(left_to_receive)
-            print(partial_data)
-            received = str(partial_data, "UTF-8")
-            data = data + received
-            left_to_receive = left_to_receive - (len(received))
-        server.setblocking(False)
-        return data
-
-    def announce_length_and_send(self, server, output):
-        server.sendall(len(output).to_bytes(12, 'big'))
-        self.client_sequence_log.debug(
-            "Announced " + str(len(output)) + " to Server (" + server.getpeername()[0] + ":" + str(
-                server.getpeername()[1]) + ")")
-        server.sendall(output)
-        self.client_sequence_log.debug(
-            "Sent all to Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ")")
-
+    # Main Send/Receive Loop
     def check_for_updates_and_send_output_buffer(self):
         read_sockets, write_sockets, error_sockets = select.select(
             [self.connected_socket], [self.connected_socket], [self.connected_socket])
@@ -186,6 +139,66 @@ class BasicWindow(QWidget):
                     self.log.debug("Sent: " + str(output, "UTF-8"))
                     self.announce_length_and_send(write_sock, output)
                 self.output_buffer.clear()
+
+    def attempt_reconnect_to_server(self):
+        not_connected = True
+        while not_connected:
+            try:
+                self.log.debug("Attempting to connect to {}:{}".format(self.server_ip, self.server_port))
+                self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.connected_socket.connect((self.server_ip, self.server_port))
+                self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
+                #self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
+                not_connected = False
+            except socket.error:
+                self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
+                time.sleep(1)
+
+    def get_free_port(self):
+        self.file_port = self.file_port + 1
+        if self.file_port == 1350:
+            self.file_port = 1339
+        return self.file_port
+
+    ####################################################################################################################
+    #                                                Network (Receive)                                                 #
+    ####################################################################################################################
+    def listen_until_all_data_received(self, server):
+        self.client_sequence_log.debug(
+            "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
+        length = int.from_bytes(server.recv(12), 'big')
+        self.client_sequence_log.debug(
+            "Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") announced " + str(
+                length) + " of data.")
+        data = ""
+        left_to_receive = length
+        while len(data) != length:
+            server.setblocking(True)
+            partial_data = server.recv(left_to_receive)
+            print(partial_data)
+            received = str(partial_data, "UTF-8")
+            data = data + received
+            left_to_receive = left_to_receive - (len(received))
+        server.setblocking(False)
+        return data
+
+    def receive_file_from_server(self, length, port, file_name):
+        file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        file_host = self.server_ip
+        self.client_sequence_log.debug("Listening up on (" + file_host + ":" + str(port) + ") ...")
+        file_sock.connect((file_host, port))
+        self.client_sequence_log.debug("Connected on (" + file_host + ":" + str(
+            port) + "). Waiting for " + length + " of data.")
+        data = b''
+        left_to_receive = length
+        while len(data) != length:
+            file_sock.setblocking(True)
+            received = file_sock.recv(left_to_receive)
+            data = data + received
+            left_to_receive = left_to_receive - (len(received))
+        file_sock.setblocking(False)
+        file_to_write = open(self.base_path.joinpath(file_name), "bw")
+        file_to_write.write(data)
 
     def process_server_response(self, response):
         match response:
@@ -218,23 +231,35 @@ class BasicWindow(QWidget):
                     self.client_sequence_log.debug("Returning dice request on " + self.server_ip + ":" + str(1340))
                     self.send_file_to_server(file, 1340)
 
-    def receive_file_from_server(self, length, port, file_name):
-        file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        file_host = self.server_ip
-        self.client_sequence_log.debug("Listening up on (" + file_host + ":" + str(port) + ") ...")
-        file_sock.connect((file_host, port))
-        self.client_sequence_log.debug("Connected on (" + file_host + ":" + str(
-            port) + "). Waiting for " + length + " of data.")
-        data = b''
-        left_to_receive = length
-        while len(data) != length:
-            file_sock.setblocking(True)
-            received = file_sock.recv(left_to_receive)
-            data = data + received
-            left_to_receive = left_to_receive - (len(received))
-        file_sock.setblocking(False)
-        file_to_write = open(self.base_path.joinpath(file_name), "bw")
-        file_to_write.write(data)
+    def decode_server_command(self, command):
+        if isinstance(command, str):
+            command = json.loads(command)
+        return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
+                          object_hook=decode_command)
+
+    ####################################################################################################################
+    #                                                Network (Send)                                                    #
+    ####################################################################################################################
+
+    def announce_length_and_send(self, server, output):
+        server.sendall(len(output).to_bytes(12, 'big'))
+        self.client_sequence_log.debug(
+            "Announced " + str(len(output)) + " to Server (" + server.getpeername()[0] + ":" + str(
+                server.getpeername()[1]) + ")")
+        server.sendall(output)
+        self.client_sequence_log.debug(
+            "Sent all to Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ")")
+
+    def send_file_to_server(self, file, file_port):
+        file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        file_socket.bind((self.server_ip, file_port))
+        file_socket.listen(5)
+        file_client, file_address = file_socket.accept()
+        file_socket.settimeout(60)
+        file_client.sendfile(file)
+        file_socket.close()
+
 
     def request_dice_from_server(self, dice):
         dice_request = json.dumps(CommandDiceRequest(dice, self.get_free_port()),
@@ -286,18 +311,6 @@ class BasicWindow(QWidget):
                     self.client_sequence_log.debug(
                         "Waiting for dice request but received another command in the meantime.")
                     self.process_server_response(info_response)
-
-    def dice_roll_manager_tab_ui(self):
-        """Create the General page UI."""
-        generalTab = QWidget()
-        self.grid_layout = DiceRollManagerLayout(self.output_buffer, player, self.dice_manager)
-        generalTab.setLayout(self.grid_layout)
-        return generalTab
-
-    def character_tab_ui(self):
-        """Create the Character page UI."""
-        return CharacterWidget(player, self.character, self.dice_manager, self.output_buffer)
-
 
 def save_to_file(character_to_write):
     f = open("../character.json", "w")
