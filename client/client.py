@@ -21,35 +21,24 @@ from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from character.dice_roll_manager_layout import DiceRollManagerLayout
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host = socket.gethostname()
-port = 1337
-
-
-def send_file_to_server(file, file_port):
-    file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    file_socket.bind((host, file_port))
-    file_socket.listen(5)
-    file_client, file_address = file_socket.accept()
-    file_socket.settimeout(60)
-    file_client.sendfile(file)
-    file_socket.close()
-
 
 class BasicWindow(QWidget):
-    def __init__(self, connected_socket, player_name):
+    def __init__(self, server_ip, server_port, player_name):
         super().__init__()
 
         self.close_splash_timer = QTimer()
         self.close_splash_timer.timeout.connect(self.close_splash)
         self.splash_screen = self.show_splash()
+
+        # Character setup
         self.player = player_name
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
         character_to_read = open(self.base_path.joinpath("character.json"), "r")
         character_json = character_to_read.read()
         character_to_read.close()
         self.character = json.loads(character_json, object_hook=decode_character)
+
+        # Logging setup
         self.client_log_name = self.player + "_client.log"
         if os.path.exists(self.client_log_name):
             os.remove(self.client_log_name)
@@ -64,8 +53,16 @@ class BasicWindow(QWidget):
         self.client_sequence_handler = logging.FileHandler(self.player + "_client_sequence.log")
         self.client_sequence_log.addHandler(self.client_sequence_handler)
 
-        # Network things
-        self.connected_socket = connected_socket
+        # Network setup
+        if server_ip is None:
+            server_ip = socket.gethostname()
+        if server_port is None:
+            server_port = 1337
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connected_socket.connect((server_ip, server_port))
+        self.connected_socket.setblocking(False)
         self.output_buffer = []
         # Connect timer to check for updates and send to server
         self.update_timer = QTimer()
@@ -73,6 +70,7 @@ class BasicWindow(QWidget):
         self.update_timer.start(1000)
         self.file_port = 1339
 
+        # Layout setup
         self.setWindowTitle('DnD Tool')
         self.grid_layout = None
         self.base_layout = QTabWidget()
@@ -92,8 +90,6 @@ class BasicWindow(QWidget):
         splash_screen = QSplashScreen(pixmap)
         splash_screen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         splash_screen.show()
-
-
         self.close_splash_timer.start(3000)
 
         return splash_screen
@@ -102,11 +98,35 @@ class BasicWindow(QWidget):
         self.splash_screen.close()
         self.show()
 
+    def attempt_reconnect_to_server(self):
+        not_connected = True
+        while not_connected:
+            try:
+                self.log.debug("Attempting to connect to {}:{}".format(self.server_ip, self.server_port))
+                self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.connected_socket.connect((self.server_ip, self.server_port))
+                self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
+                #self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
+                not_connected = False
+            except socket.error:
+                self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
+                time.sleep(1)
+
     def get_free_port(self):
         self.file_port = self.file_port + 1
         if self.file_port == 1350:
             self.file_port = 1339
         return self.file_port
+
+    def send_file_to_server(self, file, file_port):
+        file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        file_socket.bind((self.server_ip, file_port))
+        file_socket.listen(5)
+        file_client, file_address = file_socket.accept()
+        file_socket.settimeout(60)
+        file_client.sendfile(file)
+        file_socket.close()
 
     def decode_server_command(self, command):
         if isinstance(command, str):
@@ -150,11 +170,12 @@ class BasicWindow(QWidget):
             # incoming message from remote server
             received_command = self.listen_until_all_data_received(read_sock)
             self.log.debug("Received: " + received_command)
-            cmd = json.loads(received_command, object_hook=self.decode_server_command)
             if not received_command:
                 print('\nDisconnected from server')
+                self.attempt_reconnect_to_server()
                 break
             else:
+                cmd = json.loads(received_command, object_hook=self.decode_server_command)
                 if received_command != "None":
                     print(cmd)
                     self.process_server_response(cmd)
@@ -194,12 +215,12 @@ class BasicWindow(QWidget):
                         InfoDiceRequest(dice_to_return.name, dice_to_return.group, dice_to_return.image_path),
                         cls=CommandEncoder), "UTF-8"))
                     file = open(dice_to_return.image_path, "rb")
-                    self.client_sequence_log.debug("Returning dice request on " + host + ":" + str(1340))
-                    send_file_to_server(file, 1340)
+                    self.client_sequence_log.debug("Returning dice request on " + self.server_ip + ":" + str(1340))
+                    self.send_file_to_server(file, 1340)
 
     def receive_file_from_server(self, length, port, file_name):
         file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        file_host = host
+        file_host = self.server_ip
         self.client_sequence_log.debug("Listening up on (" + file_host + ":" + str(port) + ") ...")
         file_sock.connect((file_host, port))
         self.client_sequence_log.debug("Connected on (" + file_host + ":" + str(
@@ -230,7 +251,7 @@ class BasicWindow(QWidget):
                 if isinstance(info_response, CommandListenUp):
                     self.client_sequence_log.debug("Received Info Dice Request.")
                     file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    file_host = host
+                    file_host = self.server_ip
                     not_connected = True
                     while not_connected:
                         try:
@@ -288,19 +309,16 @@ if __name__ == '__main__':
     try:
         time.sleep(1)
         parser = argparse.ArgumentParser(description='Homebrew DnD Tool.')
-        parser.add_argument('--ip', help='Server IP')
+        parser.add_argument('--ip', help='Server IP (Default: localhost)')
+        parser.add_argument('--port', help='Server port (Default: 1337)', default=1337, type=int, action="store")
         parser.add_argument('--name', help='Character name')
         args = parser.parse_args()
-        if args.ip is not None:
-            host = args.ip
         if args.name is not None:
             player = args.name
         else:
             player = "Dummy"
         app = QApplication(sys.argv)
-        sock.connect((host, port))
-        sock.setblocking(False)
-        window = BasicWindow(sock, player)
+        window = BasicWindow(args.ip, args.port, player)
         sys.exit(app.exec_())
     finally:
         print("saving to file")
