@@ -3,7 +3,8 @@ import random
 
 from PyQt5.QtWidgets import QGridLayout, QPushButton
 
-from commands.command_roll_dice import CommandRollDiceEncoder, CommandRollDice
+from commands.command import CommandRollDice, CommandEncoder
+
 
 class DiceRollButtonLayout(QGridLayout):
     def __init__(self, output_buffer, player, dice_manager):
@@ -56,30 +57,30 @@ class DiceRollButtonLayout(QGridLayout):
     def roll_d2(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 1, 2, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 
     def roll_d4(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 1, 4, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 
     def roll_d6(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 1, 6, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 
     def roll_d8(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 1, 8, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 
     def roll_d10(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 1, 10, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 
     def roll_d20(self):
         self.output_buffer.append(bytes(
             json.dumps(CommandRollDice(self.player, 3, 20, "the hell of it", 10, 0, self.dice_to_use),
-                       cls=CommandRollDiceEncoder), "UTF-8"))
+                       cls=CommandEncoder), "UTF-8"))
 

@@ -2,9 +2,8 @@ import json
 import random
 
 from PyQt5.QtWidgets import QLineEdit, QPushButton
-from commands.command_roll_dice import CommandRollDice, CommandRollDiceEncoder
 
-
+from commands.command import CommandRollDice, CommandEncoder
 
 
 class ButtonLabelEditWidget:
@@ -46,7 +45,7 @@ class ButtonLabelEditWidget:
             talent_names.append(talent.name)
             talent_values.append(talent.value)
         command = CommandRollDice(self.character.name, len(talent_values), 20, self.talent.name, talent_values, int(self.line_edit.text()), self.dice_to_use)
-        self.output_buffer.append(bytes(json.dumps(command, cls=CommandRollDiceEncoder), "UTF-8"))
+        self.output_buffer.append(bytes(json.dumps(command, cls=CommandEncoder), "UTF-8"))
 
     def text_changed(self):
         self.talent.value = self.line_edit.text()

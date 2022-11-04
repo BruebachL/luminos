@@ -8,18 +8,15 @@ import sys
 import time
 from pathlib import Path
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QHBoxLayout
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
 from character.character_widget import CharacterWidget
 from character.character import CharacterEncoder, decode_character
-from commands.command_dice_request import CommandDiceRequest, CommandDiceRequestEncoder, decode_command_dice_request
-from commands.command_listen_up import decode_listen_up, CommandListenUp
-from commands.command_roll_dice import decode_command_roll_dice
-from commands.info_dice_request import decode_info_dice_request, InfoDiceRequestEncoder, InfoDiceRequest
-from commands.info_dice_request_decline import InfoDiceRequestDecline, InfoDiceRequestDeclineEncoder, \
-    decode_info_dice_request_decline
-from commands.info_roll_dice import InfoRollDice, decode_info_roll_dice
+from commands.command import decode_command, InfoRollDice, CommandListenUp, CommandDiceRequest, InfoDiceRequestDecline, \
+    InfoDiceRequest, CommandEncoder
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from character.dice_roll_manager_layout import DiceRollManagerLayout
@@ -29,10 +26,24 @@ host = socket.gethostname()
 port = 1337
 
 
+def send_file_to_server(file, file_port):
+    file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    file_socket.bind((host, file_port))
+    file_socket.listen(5)
+    file_client, file_address = file_socket.accept()
+    file_socket.settimeout(60)
+    file_client.sendfile(file)
+    file_socket.close()
+
+
 class BasicWindow(QWidget):
     def __init__(self, connected_socket, player_name):
         super().__init__()
 
+        self.close_splash_timer = QTimer()
+        self.close_splash_timer.timeout.connect(self.close_splash)
+        self.splash_screen = self.show_splash()
         self.player = player_name
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
         character_to_read = open(self.base_path.joinpath("character.json"), "r")
@@ -75,6 +86,22 @@ class BasicWindow(QWidget):
         self.layout.addWidget(self.dice_roll_manager_tab_ui())
         self.layout.addWidget(self.base_layout)
 
+
+    def show_splash(self):
+        pixmap = QPixmap('/home/ascor/PycharmProjects/luminos/resources/splash_screen.png')
+        splash_screen = QSplashScreen(pixmap)
+        splash_screen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        splash_screen.show()
+
+
+        self.close_splash_timer.start(3000)
+
+        return splash_screen
+
+    def close_splash(self):
+        self.splash_screen.close()
+        self.show()
+
     def get_free_port(self):
         self.file_port = self.file_port + 1
         if self.file_port == 1350:
@@ -84,32 +111,16 @@ class BasicWindow(QWidget):
     def decode_server_command(self, command):
         if isinstance(command, str):
             command = json.loads(command)
-        match command['class']:
-            case "command_roll_dice":
-                self.client_sequence_log.debug("Client decoded command roll dice.")
-                return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                                  object_hook=decode_command_roll_dice)
-            case "info_roll_dice":
-                self.client_sequence_log.debug("Client decoded info roll dice.")
-                return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                                  object_hook=decode_info_roll_dice)
-            case "command_dice_request":
-                self.client_sequence_log.debug("Client decoded command dice request.")
-                return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                                  object_hook=decode_command_dice_request)
-            case "info_dice_request":
-                self.client_sequence_log.debug("Client decoded info dice request.")
-                return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                                  object_hook=decode_info_dice_request)
-            case "info_dice_request_decline":
-                self.client_sequence_log.debug("Client decoded info dice request decline.")
-                return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
-                                  object_hook=decode_info_dice_request_decline)
+        return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
+                          object_hook=decode_command)
 
     def listen_until_all_data_received(self, server):
-        self.client_sequence_log.debug("Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
+        self.client_sequence_log.debug(
+            "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
         length = int.from_bytes(server.recv(12), 'big')
-        self.client_sequence_log.debug("Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") announced " + str(length) + " of data.")
+        self.client_sequence_log.debug(
+            "Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") announced " + str(
+                length) + " of data.")
         data = ""
         left_to_receive = length
         while len(data) != length:
@@ -124,9 +135,12 @@ class BasicWindow(QWidget):
 
     def announce_length_and_send(self, server, output):
         server.sendall(len(output).to_bytes(12, 'big'))
-        self.client_sequence_log.debug("Announced " + str(len(output)) + " to Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ")")
+        self.client_sequence_log.debug(
+            "Announced " + str(len(output)) + " to Server (" + server.getpeername()[0] + ":" + str(
+                server.getpeername()[1]) + ")")
         server.sendall(output)
-        self.client_sequence_log.debug("Sent all to Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ")")
+        self.client_sequence_log.debug(
+            "Sent all to Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ")")
 
     def check_for_updates_and_send_output_buffer(self):
         read_sockets, write_sockets, error_sockets = select.select(
@@ -160,96 +174,97 @@ class BasicWindow(QWidget):
                 if dice_not_available is not None:
                     self.client_sequence_log.debug("Couldn't find dice " + str(dice_not_available))
                     for dice in dice_not_available:
-                        dice_request = json.dumps(CommandDiceRequest(dice, self.get_free_port()),
-                                                  cls=CommandDiceRequestEncoder)
-                        self.client_sequence_log.debug("Sending dice request.")
-                        self.announce_length_and_send(self.connected_socket, bytes(dice_request, "UTF-8"))
-                        not_ready_to_receive = True
-                        while not_ready_to_receive:
-                            read_sockets, write_sockets, error_sockets = select.select(
-                                [self.connected_socket], [self.connected_socket], [self.connected_socket])
-                            for read_sock in read_sockets:
-                                info_response = self.listen_until_all_data_received(read_sock)
-                                info_response = self.decode_server_command(info_response)
-                                if isinstance(info_response, InfoDiceRequest):
-                                    self.client_sequence_log.debug("Received Info Dice Request.")
-                                    file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                                    file_host = host
-                                    not_connected = True
-                                    while not_connected:
-                                        try:
-                                            file_sock.connect((file_host, info_response.port))
-                                            not_connected = False
-                                            self.client_sequence_log.debug("Connected to " + str(file_host) + ":" + str(info_response.port))
-                                        except:
-                                            print("Waiting for connection")
-                                    length = info_response.length
-                                    self.client_sequence_log.debug("Expecting to receive " + str(length) + "on " + str(file_host) + ":" + str(info_response.port))
-                                    data = b''
-                                    left_to_receive = length
-                                    while len(data) != length:
-                                        file_sock.setblocking(True)
-                                        received = file_sock.recv(left_to_receive)
-                                        data = data + received
-                                        left_to_receive = left_to_receive - (len(received))
-                                    file_sock.setblocking(False)
-                                    file_to_write = open(
-                                        self.dice_manager.base_resource_path.joinpath(info_response.image_path), "bw")
-                                    file_to_write.write(data)
-                                    self.client_sequence_log.debug(
-                                        "Wrote file with " + str(len(data)) + " from " + str(file_host) + ":" + str(
-                                            info_response.port))
-                                    self.dice_manager.add_dice(
-                                        Dice(info_response.name, info_response.group, info_response.image_path, False))
-                                    self.dice_manager.update_layout()
-                                    not_ready_to_receive = False
-                                else:
-                                    self.client_sequence_log.debug("Waiting for dice request but received another command in the meantime.")
-                                    self.process_server_response(info_response)
+                        self.request_dice_from_server(dice)
                 self.grid_layout.label.add_dice_roll(response.roll_value, response.dice_skins)
                 self.grid_layout.listview.insertItem(0, str(response))
             case CommandListenUp():
-                listen_up = json.loads(str(response), object_hook=decode_listen_up)
-                file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                file_host = host
-                self.client_sequence_log.debug("Listening up on (" + file_host + ":" + str(listen_up.port) + ") ...")
-                file_sock.connect((file_host, listen_up.port))
-                self.client_sequence_log.debug("Connected on (" + file_host + ":" + str(listen_up.port) + "). Waiting for " + listen_up.length + " of data.")
-                length = listen_up.length
-                data = b''
-                left_to_receive = length
-                while len(data) != length:
-                    file_sock.setblocking(True)
-                    received = file_sock.recv(left_to_receive)
-                    data = data + received
-                    left_to_receive = left_to_receive - (len(received))
-                file_sock.setblocking(False)
-                file_to_write = open(self.base_path.joinpath(listen_up.file_name), "bw")
-                file_to_write.write(data)
+                listen_up = json.loads(str(response), object_hook=decode_command)
+                self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
             case CommandDiceRequest():
-                cmd = json.loads(str(response), object_hook=decode_command_dice_request)
+                cmd = json.loads(str(response), object_hook=decode_command)
                 self.client_sequence_log.debug("Received request for dice (" + cmd.name + ")")
                 dice_to_return = self.dice_manager.get_dice_for_name(cmd.name)
                 if dice_to_return is None:
                     self.client_sequence_log.debug("Have to decline dice request for dice (" + cmd.name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(
-                        json.dumps(InfoDiceRequestDecline(cmd.name), cls=InfoDiceRequestDeclineEncoder), "UTF-8"))
+                        json.dumps(InfoDiceRequestDecline(cmd.name), cls=CommandEncoder), "UTF-8"))
                 else:
                     self.client_sequence_log.debug("Fulfilling dice request for dice (" + cmd.name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(json.dumps(
                         InfoDiceRequest(dice_to_return.name, dice_to_return.group, dice_to_return.image_path),
-                        cls=InfoDiceRequestEncoder), "UTF-8"))
+                        cls=CommandEncoder), "UTF-8"))
                     file = open(dice_to_return.image_path, "rb")
-                    file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    file_socket.bind((self.host, 1340))
-                    self.client_sequence_log.debug("Returning dice request on " + self.host + ":" + str(1340))
-                    file_socket.listen(5)
-                    file_client, file_address = file_socket.accept()
-                    file_socket.settimeout(60)
-                    file_client.sendfile(file)
-                    file_socket.close()
+                    self.client_sequence_log.debug("Returning dice request on " + host + ":" + str(1340))
+                    send_file_to_server(file, 1340)
 
+    def receive_file_from_server(self, length, port, file_name):
+        file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        file_host = host
+        self.client_sequence_log.debug("Listening up on (" + file_host + ":" + str(port) + ") ...")
+        file_sock.connect((file_host, port))
+        self.client_sequence_log.debug("Connected on (" + file_host + ":" + str(
+            port) + "). Waiting for " + length + " of data.")
+        data = b''
+        left_to_receive = length
+        while len(data) != length:
+            file_sock.setblocking(True)
+            received = file_sock.recv(left_to_receive)
+            data = data + received
+            left_to_receive = left_to_receive - (len(received))
+        file_sock.setblocking(False)
+        file_to_write = open(self.base_path.joinpath(file_name), "bw")
+        file_to_write.write(data)
+
+    def request_dice_from_server(self, dice):
+        dice_request = json.dumps(CommandDiceRequest(dice, self.get_free_port()),
+                                  cls=CommandEncoder)
+        self.client_sequence_log.debug("Sending dice request.")
+        self.announce_length_and_send(self.connected_socket, bytes(dice_request, "UTF-8"))
+        not_ready_to_receive = True
+        while not_ready_to_receive:
+            read_sockets, write_sockets, error_sockets = select.select(
+                [self.connected_socket], [self.connected_socket], [self.connected_socket])
+            for read_sock in read_sockets:
+                info_response = self.listen_until_all_data_received(read_sock)
+                info_response = self.decode_server_command(info_response)
+                if isinstance(info_response, CommandListenUp):
+                    self.client_sequence_log.debug("Received Info Dice Request.")
+                    file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    file_host = host
+                    not_connected = True
+                    while not_connected:
+                        try:
+                            file_sock.connect((file_host, info_response.port))
+                            not_connected = False
+                            self.client_sequence_log.debug(
+                                "Connected to " + str(file_host) + ":" + str(info_response.port))
+                        except:
+                            print("Waiting for connection")
+                    length = info_response.length
+                    self.client_sequence_log.debug(
+                        "Expecting to receive " + str(length) + "on " + str(file_host) + ":" + str(info_response.port))
+                    data = b''
+                    left_to_receive = length
+                    while len(data) != length:
+                        file_sock.setblocking(True)
+                        received = file_sock.recv(left_to_receive)
+                        data = data + received
+                        left_to_receive = left_to_receive - (len(received))
+                    file_sock.setblocking(False)
+                    file_to_write = open(
+                        self.dice_manager.base_resource_path.joinpath(info_response.image_path), "bw")
+                    file_to_write.write(data)
+                    self.client_sequence_log.debug(
+                        "Wrote file with " + str(len(data)) + " from " + str(file_host) + ":" + str(
+                            info_response.port))
+                    self.dice_manager.add_dice(
+                        Dice(info_response.name, info_response.group, info_response.image_path, False))
+                    self.dice_manager.update_layout()
+                    not_ready_to_receive = False
+                else:
+                    self.client_sequence_log.debug(
+                        "Waiting for dice request but received another command in the meantime.")
+                    self.process_server_response(info_response)
 
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""
@@ -261,6 +276,7 @@ class BasicWindow(QWidget):
     def character_tab_ui(self):
         """Create the Character page UI."""
         return CharacterWidget(player, self.character, self.dice_manager, self.output_buffer)
+
 
 def save_to_file(character_to_write):
     f = open("../character.json", "w")
@@ -285,7 +301,6 @@ if __name__ == '__main__':
         sock.connect((host, port))
         sock.setblocking(False)
         window = BasicWindow(sock, player)
-        window.show()
         sys.exit(app.exec_())
     finally:
         print("saving to file")

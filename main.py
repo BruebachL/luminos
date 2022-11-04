@@ -8,15 +8,11 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication
 
-from commands.command_dice_request import decode_command_dice_request, CommandDiceRequest, CommandDiceRequestEncoder
-from commands.info_dice_request import InfoDiceRequestEncoder, InfoDiceRequest, decode_info_dice_request
-from commands.info_dice_request_decline import InfoDiceRequestDecline, decode_info_dice_request_decline, \
-    InfoDiceRequestDeclineEncoder
+from commands.command import CommandRollDice, CommandDiceRequest, InfoDiceRequestDecline, CommandEncoder, \
+    InfoDiceRequest, CommandListenUp, decode_command
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from server import gamestate
-from commands.command_listen_up import CommandListenUp, CommandListenUpEncoder
-from commands.command_roll_dice import decode_command_roll_dice, CommandRollDice
 base_path = sys.path[0] + "/"
 lock = threading.Lock()
 
@@ -39,22 +35,6 @@ server_sequence_handler = logging.FileHandler("server_sequence.log")
 server_sequence_log.addHandler(server_sequence_handler)
 
 
-def decode_command(command):
-    match command['class']:
-        case "command_roll_dice":
-            server_sequence_log.debug("Server decoded command roll dice.")
-            return json.loads(str(command).replace('\'', '\"'), object_hook=decode_command_roll_dice)
-        case "command_dice_request":
-            server_sequence_log.debug("Server decoded command dice request")
-            return json.loads(str(command).replace('\'', '\"'), object_hook=decode_command_dice_request)
-        case "info_dice_request":
-            server_sequence_log.debug("Server decoded command info dice request")
-            return json.loads(str(command).replace('\'', "\""), object_hook=decode_info_dice_request)
-        case "info_dice_request_decline":
-            server_sequence_log.debug("Server decoded command info dice request decline")
-            return json.loads(str(command).replace('\'', '\"'), object_hook=decode_info_dice_request_decline)
-
-
 class ThreadedServer(object):
     def __init__(self, host, port):
         self.host = host
@@ -71,10 +51,10 @@ class ThreadedServer(object):
     def execute_command(self, client, game_state, command):
         cmd = json.loads(command, object_hook=decode_command)
         match cmd:
-            case RollDice if isinstance(cmd, CommandRollDice):
+            case CommandRollDice():
                 server_sequence_log.debug("Rolling some dice for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 return game_state.add_dice_roll(cmd)
-            case RequestDice if isinstance(cmd, CommandDiceRequest):
+            case CommandDiceRequest():
                 server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requests some dice (" + cmd.name + ").")
                 dice_to_return = self.dice_manager.get_dice_for_name(cmd.name)
                 if dice_to_return is None:
@@ -87,11 +67,11 @@ class ThreadedServer(object):
                         server_sequence_log.debug(
                             "No one had the dice (" + cmd.name + ") that Client (" + client.getpeername()[
                                 0] + ") requested. Declining request.")
-                        return json.dumps(InfoDiceRequestDecline(dice_to_return), cls=InfoDiceRequestDeclineEncoder)
+                        return json.dumps(InfoDiceRequestDecline(dice_to_return), cls=CommandEncoder)
                 server_sequence_log.debug(
                     "Fulfilling dice request (" + cmd.name + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 self.fulfill_dice_request(dice_to_return, client, cmd.port)
-                return json.dumps(InfoDiceRequest(dice_to_return.name, dice_to_return.group, dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1], os.path.getsize(dice_to_return.image_path), cmd.port), cls=InfoDiceRequestEncoder)
+                return json.dumps(InfoDiceRequest(dice_to_return.name, dice_to_return.group, dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1], os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder)
 
     def receive_dice_from_client(self, client_to_receive_from, info_dice_request):
         response = info_dice_request
@@ -110,7 +90,7 @@ class ThreadedServer(object):
 
     def request_dice_from_client(self, client_to_request_from, dice_to_request):
         dice_request = CommandDiceRequest(dice_to_request, 1340)
-        self.announce_length_and_send(client_to_request_from, bytes(json.dumps(dice_request, cls=CommandDiceRequestEncoder), "UTF-8"))
+        self.announce_length_and_send(client_to_request_from, bytes(json.dumps(dice_request, cls=CommandEncoder), "UTF-8"))
         response = self.listen_until_all_data_received(client_to_request_from)
         command = json.loads(str(response, "UTF-8"), object_hook=decode_command)
         if isinstance(command, InfoDiceRequestDecline):
@@ -154,7 +134,7 @@ class ThreadedServer(object):
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         file_socket.bind((self.host, port))
-        self.announce_length_and_send(client, bytes(json.dumps(CommandListenUp(port, file_length, file_name), cls=CommandListenUpEncoder), "UTF-8"))
+        self.announce_length_and_send(client, bytes(json.dumps(CommandListenUp(port, file_length, file_name), cls=CommandEncoder), "UTF-8"))
         file_socket.listen(5)
         while True:
             file_client, file_address = file_socket.accept()
