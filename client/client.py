@@ -88,6 +88,23 @@ class BasicWindow(QWidget):
         self.close_splash_timer.start(1500)
 
 
+    def setup_logger(self, log_name):
+        if os.path.exists(log_name):
+            os.remove(log_name)
+        logger = logging.Logger(log_name)
+        handler = logging.FileHandler(log_name)
+        formatter = logging.Formatter(fmt="[%(asctime)s] %(message)-160s (%(module)s:%(funcName)s:%(lineno)d)",
+                                             datefmt='%Y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        return logger
+
+
+    ####################################################################################################################
+    #                                                UI Housekeeping                                                   #
+    ####################################################################################################################
+
+
     def show_splash(self):
         pixmap = QPixmap('resources/splash_screen.png')
         splash_screen = QSplashScreen(pixmap)
@@ -102,18 +119,6 @@ class BasicWindow(QWidget):
         self.show()
 
 
-    def setup_logger(self, log_name):
-        if os.path.exists(log_name):
-            os.remove(log_name)
-        logger = logging.Logger(log_name)
-        handler = logging.FileHandler(log_name)
-        formatter = logging.Formatter(fmt="[%(asctime)s] %(message)-160s (%(module)s:%(funcName)s:%(lineno)d)",
-                                             datefmt='%Y-%m-%d %H:%M:%S')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
-
-
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""
         generalTab = QWidget()
@@ -125,9 +130,11 @@ class BasicWindow(QWidget):
         """Create the Character page UI."""
         return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
+
     ####################################################################################################################
     #                                                Network                                                           #
     ####################################################################################################################
+
 
     # Main Send/Receive Loop
     def check_for_updates_and_send_output_buffer(self):
@@ -175,9 +182,12 @@ class BasicWindow(QWidget):
             self.file_port = 1339
         return self.file_port
 
+
     ####################################################################################################################
     #                                                Network (Receive)                                                 #
     ####################################################################################################################
+
+
     def listen_until_all_data_received(self, server):
         self.client_sequence_log.debug(
             "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
@@ -252,9 +262,11 @@ class BasicWindow(QWidget):
         return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
                           object_hook=decode_command)
 
+
     ####################################################################################################################
     #                                                Network (Send)                                                    #
     ####################################################################################################################
+
 
     def announce_length_and_send(self, server, output):
         server.sendall(len(output).to_bytes(12, 'big'))
