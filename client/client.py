@@ -87,23 +87,20 @@ class BasicWindow(QWidget):
 
         self.close_splash_timer.start(1500)
 
-
     def setup_logger(self, log_name):
         if os.path.exists(log_name):
             os.remove(log_name)
         logger = logging.Logger(log_name)
         handler = logging.FileHandler(log_name)
         formatter = logging.Formatter(fmt="[%(asctime)s] %(message)-160s (%(module)s:%(funcName)s:%(lineno)d)",
-                                             datefmt='%Y-%m-%d %H:%M:%S')
+                                      datefmt='%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
 
-
     ####################################################################################################################
     #                                                UI Housekeeping                                                   #
     ####################################################################################################################
-
 
     def show_splash(self):
         pixmap = QPixmap('resources/splash_screen.png')
@@ -113,11 +110,9 @@ class BasicWindow(QWidget):
 
         return splash_screen
 
-
     def close_splash(self):
         self.splash_screen.close()
         self.show()
-
 
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""
@@ -130,11 +125,9 @@ class BasicWindow(QWidget):
         """Create the Character page UI."""
         return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
-
     ####################################################################################################################
     #                                                Network                                                           #
     ####################################################################################################################
-
 
     # Main Send/Receive Loop
     def check_for_updates_and_send_output_buffer(self):
@@ -170,7 +163,7 @@ class BasicWindow(QWidget):
                 self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.connected_socket.connect((self.server_ip, self.server_port))
                 self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
-                #self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
+                # self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
                 not_connected = False
             except socket.error:
                 self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
@@ -182,11 +175,9 @@ class BasicWindow(QWidget):
             self.file_port = 1339
         return self.file_port
 
-
     ####################################################################################################################
     #                                                Network (Receive)                                                 #
     ####################################################################################################################
-
 
     def listen_until_all_data_received(self, server):
         self.client_sequence_log.debug(
@@ -262,11 +253,9 @@ class BasicWindow(QWidget):
         return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
                           object_hook=decode_command)
 
-
     ####################################################################################################################
     #                                                Network (Send)                                                    #
     ####################################################################################################################
-
 
     def announce_length_and_send(self, server, output):
         server.sendall(len(output).to_bytes(12, 'big'))
@@ -286,7 +275,6 @@ class BasicWindow(QWidget):
         file_socket.settimeout(60)
         file_client.sendfile(file)
         file_socket.close()
-
 
     def request_dice_from_server(self, dice):
         dice_request = json.dumps(CommandDiceRequest(dice, self.get_free_port()),
@@ -338,6 +326,7 @@ class BasicWindow(QWidget):
                     self.client_sequence_log.debug(
                         "Waiting for dice request but received another command in the meantime.")
                     self.process_server_response(info_response)
+
 
 def save_to_file(character_to_write):
     f = open("../character.json", "w")
