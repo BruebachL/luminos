@@ -8,7 +8,7 @@ import sys
 import time
 from pathlib import Path
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, Qt
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
@@ -31,6 +31,8 @@ class BasicWindow(QWidget):
         self.splash_screen = self.show_splash()
 
         # Character setup
+        self.splash_screen.showMessage("Loading character...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                       QtCore.Qt.white)
         self.player = player_name
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
         character_to_read = open(self.base_path.joinpath("character.json"), "r")
@@ -39,11 +41,15 @@ class BasicWindow(QWidget):
         self.character = json.loads(character_json, object_hook=decode_character)
 
         # Logging setup
+        self.splash_screen.showMessage("Setting up logging...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                       QtCore.Qt.white)
         self.log = self.setup_logger(self.player + "_client.log")
         self.log.addHandler(logging.StreamHandler())
         self.client_sequence_log = self.setup_logger(self.player + "_client_sequence.log")
 
         # Network setup
+        self.splash_screen.showMessage("Connecting to server...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                       QtCore.Qt.white)
         if server_ip is None:
             server_ip = socket.gethostname()
         if server_port is None:
@@ -61,6 +67,8 @@ class BasicWindow(QWidget):
         self.file_port = 1339
 
         # Layout setup
+        self.splash_screen.showMessage("Initializing UI...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                       QtCore.Qt.white)
         self.setWindowTitle('DnD Tool')
         self.grid_layout = None
         self.base_layout = QTabWidget()
@@ -74,13 +82,17 @@ class BasicWindow(QWidget):
         self.layout.addWidget(self.dice_roll_manager_tab_ui())
         self.layout.addWidget(self.base_layout)
 
+        self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                       QtCore.Qt.white)
+
+        self.close_splash_timer.start(1500)
+
 
     def show_splash(self):
         pixmap = QPixmap('resources/splash_screen.png')
         splash_screen = QSplashScreen(pixmap)
-        splash_screen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        splash_screen.setWindowFlags(splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         splash_screen.show()
-        self.close_splash_timer.start(3000)
 
         return splash_screen
 
