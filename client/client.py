@@ -26,9 +26,9 @@ class BasicWindow(QWidget):
     def __init__(self, server_ip, server_port, player_name):
         super().__init__()
 
-        self.close_splash_timer = QTimer()
-        self.close_splash_timer.timeout.connect(self.close_splash)
-        self.splash_screen = self.show_splash()
+        self.splash_screen = QSplashScreen(QPixmap('resources/splash_screen.png'))
+        self.splash_screen.setWindowFlags(self.splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        self.splash_screen.show()
 
         # Character setup
         self.splash_screen.showMessage("Loading character...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -85,7 +85,9 @@ class BasicWindow(QWidget):
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
 
-        self.close_splash_timer.start(1500)
+        time.sleep(1.5)
+        self.splash_screen.close()
+        self.show()
 
     def setup_logger(self, log_name):
         if os.path.exists(log_name):
@@ -102,18 +104,6 @@ class BasicWindow(QWidget):
     #                                                UI Housekeeping                                                   #
     ####################################################################################################################
 
-    def show_splash(self):
-        pixmap = QPixmap('resources/splash_screen.png')
-        splash_screen = QSplashScreen(pixmap)
-        splash_screen.setWindowFlags(splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
-        splash_screen.show()
-
-        return splash_screen
-
-    def close_splash(self):
-        self.splash_screen.close()
-        self.show()
-
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""
         generalTab = QWidget()
@@ -126,7 +116,7 @@ class BasicWindow(QWidget):
         return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
     ####################################################################################################################
-    #                                                Network                                                           #
+    #                                                Network (General)                                                 #
     ####################################################################################################################
 
     # Main Send/Receive Loop
