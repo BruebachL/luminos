@@ -105,13 +105,13 @@ class BasicWindow(QWidget):
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""
         generalTab = QWidget()
-        self.grid_layout = DiceRollManagerLayout(self.output_buffer, player, self.dice_manager)
+        self.grid_layout = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
         generalTab.setLayout(self.grid_layout)
         return generalTab
 
     def character_tab_ui(self):
         """Create the Character page UI."""
-        return CharacterWidget(player, self.character, self.dice_manager, self.output_buffer)
+        return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
     ####################################################################################################################
     #                                                Network                                                           #
@@ -327,14 +327,10 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Homebrew DnD Tool.')
         parser.add_argument('--ip', help='Server IP (Default: localhost)')
         parser.add_argument('--port', help='Server port (Default: 1337)', default=1337, type=int, action="store")
-        parser.add_argument('--name', help='Character name')
+        parser.add_argument('--name', help='Character name', default="Dummy", type=str, action="store")
         args = parser.parse_args()
-        if args.name is not None:
-            player = args.name
-        else:
-            player = "Dummy"
         app = QApplication(sys.argv)
-        window = BasicWindow(args.ip, args.port, player)
+        window = BasicWindow(args.ip, args.port, args.name)
         sys.exit(app.exec_())
     finally:
         print("saving to file")
