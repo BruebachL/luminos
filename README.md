@@ -20,4 +20,4 @@ Luminos
 14. Type 'python3.10 -m pip install -e .' to install the project.
 15. Launch the client with 'python3.10 client/client.py --ip <server_ip> --name <your_character_name>'
 
-After the initial installation, Luminos may be launched by repeating steps 11, 13, and 15.
+After the initial installation, Luminos may be launched by repeating steps 10, 11, 13, and 15.
