@@ -39,19 +39,9 @@ class BasicWindow(QWidget):
         self.character = json.loads(character_json, object_hook=decode_character)
 
         # Logging setup
-        self.client_log_name = self.player + "_client.log"
-        if os.path.exists(self.client_log_name):
-            os.remove(self.client_log_name)
-        if os.path.exists(self.player + "_client_sequence.log"):
-            os.remove(self.player + "_client_sequence.log")
-        logging.basicConfig(format="[%(asctime)s] %(message)-275s (%(module)s:%(funcName)s:%(lineno)d)",
-                            handlers=[logging.FileHandler(self.client_log_name),
-                                      logging.StreamHandler()],
-                            datefmt='%Y-%m-%d %H:%M:%S', force=True, encoding='utf-8', level=logging.DEBUG)
-        self.log = logging.getLogger(__name__)
-        self.client_sequence_log = logging.Logger(self.player + " client sequence logger")
-        self.client_sequence_handler = logging.FileHandler(self.player + "_client_sequence.log")
-        self.client_sequence_log.addHandler(self.client_sequence_handler)
+        self.log = self.setup_logger(self.player + "_client.log")
+        self.log.addHandler(logging.StreamHandler())
+        self.client_sequence_log = self.setup_logger(self.player + "_client_sequence.log")
 
         # Network setup
         if server_ip is None:
@@ -86,7 +76,7 @@ class BasicWindow(QWidget):
 
 
     def show_splash(self):
-        pixmap = QPixmap('/home/ascor/PycharmProjects/luminos/resources/splash_screen.png')
+        pixmap = QPixmap('resources/splash_screen.png')
         splash_screen = QSplashScreen(pixmap)
         splash_screen.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         splash_screen.show()
@@ -98,6 +88,19 @@ class BasicWindow(QWidget):
     def close_splash(self):
         self.splash_screen.close()
         self.show()
+
+
+    def setup_logger(self, log_name):
+        if os.path.exists(log_name):
+            os.remove(log_name)
+        logger = logging.Logger(log_name)
+        handler = logging.FileHandler(log_name)
+        formatter = logging.Formatter(fmt="[%(asctime)s] %(message)-160s (%(module)s:%(funcName)s:%(lineno)d)",
+                                             datefmt='%Y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        return logger
+
 
     def dice_roll_manager_tab_ui(self):
         """Create the General page UI."""

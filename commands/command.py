@@ -37,7 +37,7 @@ class InfoRollDice:
         self.dice_skins = dice_skins
 
     def __str__(self):
-        return str(self.player) + " rolled a " + str(self.roll_value) + " with a D" + str(self.dice_used) + " to check " + str(self.rolled_for) + ". Their value is at " + str(self.rolled_against) + (" They succeedec." if self.success else " They failec.")
+        return str(self.player) + " rolled a " + str(self.roll_value) + " with a D" + str(self.dice_used) + " to check " + str(self.rolled_for) + ". Their value is at " + str(self.rolled_against) + (" They succeeded." if self.success else " They failed.")
 
 
 class InfoDiceRequestDecline:
