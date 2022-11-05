@@ -19,3 +19,5 @@ Luminos
 13. Type 'source env/bin/activate' to activate the virtual environment.
 14. Type 'python3.10 -m pip install -e .' to install the project.
 15. Launch the client with 'python3.10 client/client.py --ip <server_ip> --name <your_character_name>'
+
+After the initial installation, Luminos may be launched by repeating steps 11, 13, and 15.
