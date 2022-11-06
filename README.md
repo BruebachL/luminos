@@ -1,4 +1,4 @@
-Luminos
+![Luminos](https://raw.githubusercontent.com/BruebachL/luminos/master/resources/splash_screen.png)
 ===========
 # Installation
 
