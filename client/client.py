@@ -11,7 +11,7 @@ from pathlib import Path
 from PyQt5 import QtCore, Qt
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
+from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen, QProgressBar
 
 from character.character_widget import CharacterWidget
 from character.character import CharacterEncoder, decode_character
@@ -26,6 +26,7 @@ class BasicWindow(QWidget):
     def __init__(self, server_ip, server_port, player_name):
         super().__init__()
 
+        # Splash screen setup
         self.splash_screen = QSplashScreen(QPixmap('resources/splash_screen.png'))
         self.splash_screen.setWindowFlags(self.splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.splash_screen.show()
@@ -56,9 +57,8 @@ class BasicWindow(QWidget):
             server_port = 1337
         self.server_ip = server_ip
         self.server_port = server_port
-        self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connected_socket.connect((server_ip, server_port))
-        self.connected_socket.setblocking(False)
+        self.connected_socket = None
+        self.attempt_reconnect_to_server()
         self.output_buffer = []
         # Connect timer to check for updates and send to server
         self.update_timer = QTimer()
@@ -82,9 +82,9 @@ class BasicWindow(QWidget):
         self.layout.addWidget(self.dice_roll_manager_tab_ui())
         self.layout.addWidget(self.base_layout)
 
+        # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
-
         time.sleep(1.5)
         self.splash_screen.close()
         self.show()
@@ -147,17 +147,32 @@ class BasicWindow(QWidget):
 
     def attempt_reconnect_to_server(self):
         not_connected = True
+        connection_attempts = 0
+        #progress_bar = QProgressBar(self.splash_screen)
+        # Can't do this, might need a layout for the splashscreen
+        #progress_bar.setWindowFlags(progress_bar.windowFlags() | QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter | QtCore.Qt.WindowStaysOnTopHint)
+        #progress_bar.setRange(0,0)
+        #progress_bar.move(250, 150)
+        #progress_bar.show()
         while not_connected:
-            try:
-                self.log.debug("Attempting to connect to {}:{}".format(self.server_ip, self.server_port))
-                self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connected_socket.connect((self.server_ip, self.server_port))
-                self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
-                # self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
-                not_connected = False
-            except socket.error:
-                self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
-                time.sleep(1)
+            if connection_attempts < 10:
+                connection_attempts += 1
+                try:
+                    self.log.debug("Attempting to connect to {}:{}".format(self.server_ip, self.server_port))
+                    self.connected_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.connected_socket.connect((self.server_ip, self.server_port))
+                    self.connected_socket.setblocking(False)
+                    self.log.debug("Connected to {}:{}".format(self.server_ip, self.server_port))
+                    # self.announce_length_and_send(self.connected_socket, bytes(self.submodule_name, 'UTF-8'))
+                    not_connected = False
+                except socket.error:
+                    self.log.debug("Failed reconnection attempt to {}:{}".format(self.server_ip, self.server_port))
+                    time.sleep(1)
+            else:
+                self.splash_screen.showMessage("Cannot connect to server. Exiting ...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
+                                               QtCore.Qt.white)
+                time.sleep(2)
+                sys.exit(1)
 
     def get_free_port(self):
         self.file_port = self.file_port + 1
