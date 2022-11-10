@@ -27,7 +27,7 @@ class BasicWindow(QWidget):
         super().__init__()
 
         # Splash screen setup
-        self.splash_screen = QSplashScreen(QPixmap(Path("resources")).joinpath(Path("splash_screen.png")))
+        self.splash_screen = QSplashScreen(QPixmap(str(Path("resources").joinpath(Path("splash_screen.png")))))
         self.splash_screen.setWindowFlags(self.splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.splash_screen.show()
 
