@@ -295,6 +295,7 @@ class BasicWindow(QWidget):
             for read_sock in read_sockets:
                 listen_up_response = self.listen_until_all_data_received(read_sock)
                 listen_up_response = self.decode_server_command(listen_up_response)
+                self.client_sequence_log.debug("This should be a listen up...")
                 if isinstance(listen_up_response, CommandListenUp):
                     self.client_sequence_log.debug("Received Listen Up.")
                     file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -320,7 +321,7 @@ class BasicWindow(QWidget):
                         left_to_receive = left_to_receive - (len(received))
                     file_sock.setblocking(False)
                     file_to_write = open(
-                        self.dice_manager.base_resource_path.joinpath(listen_up_response.file_name), "bw")
+                        self.dice_manager.base_resource_path.joinpath(listen_up_response.file_name.split('\\')[-1].split('/')[-1]), "bw")
                     file_to_write.write(data)
                     self.client_sequence_log.debug(
                         "Wrote file with " + str(len(data)) + " from " + str(file_host) + ":" + str(
@@ -328,7 +329,7 @@ class BasicWindow(QWidget):
                     info_response = self.listen_until_all_data_received(read_sock)
                     info_response = self.decode_server_command(info_response)
                     self.dice_manager.add_dice(
-                        Dice(info_response.name, info_response.group, info_response.image_path, False))
+                        Dice(info_response.name, info_response.group, self.dice_manager.base_resource_path.joinpath(info_response.image_path), False))
                     self.dice_manager.update_layout()
                     not_ready_to_receive = False
                 else:

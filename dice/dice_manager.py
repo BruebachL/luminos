@@ -48,8 +48,9 @@ class DiceManager(QWidget):
 
         if "Ungrouped" in [dice_group.name for dice_group in self.dice_groups]:
             for dice_group in self.dice_groups:
-                if dice_group.name == "Ungrouped":
-                    dice_group.dice.extend(self.get_all_dice())
+                if dice_group is not None:
+                    if dice_group.name == "Ungrouped":
+                        dice_group.dice.extend(self.get_all_dice())
         else:
             self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources")).joinpath(Path("dice_pictures")))
 
@@ -109,8 +110,9 @@ class DiceManager(QWidget):
     def save_to_file(self):
         file = open(self.dice_config_file, "w")
         for dice_group in self.dice_groups:
-            print("Writing file group ", str(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n"))
-            file.write(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n")
+            if dice_group is not None:
+                print("Writing file group ", str(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n"))
+                file.write(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n")
         file.close()
 
     def populate_use_dice(self):
