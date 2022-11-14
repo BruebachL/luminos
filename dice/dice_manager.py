@@ -54,7 +54,7 @@ class DiceManager(QWidget):
                             dice_group.dice = []
                         dice_group.dice.extend(self.get_all_dice())
         else:
-            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources")).joinpath(Path("dice_pictures")))
+            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures"))))
 
     def add_dice(self, dice_to_add):
         for dice_group in self.dice_groups:
