@@ -13,7 +13,7 @@ from commands.command import CommandRollDice, CommandDiceRequest, InfoDiceReques
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from server import gamestate
-base_path = sys.path[0] + "/"
+base_path = sys.path[0]
 lock = threading.Lock()
 
 if os.path.exists('example.log'):

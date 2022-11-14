@@ -92,16 +92,19 @@ class DiceManager(QWidget):
     def get_all_dice(self):
         not_found_dice = []
         onlyfiles = [f for f in listdir(self.base_resource_path) if isfile(join(self.base_resource_path, f))]
+        print(onlyfiles)
+        dice = [x for x in self.dice_groups]
+        file_paths = [[x.image_path for x in y.dice] for y in dice]
+        dice_file_paths = [[x for x in dice_file_path] for dice_file_path in file_paths]
+        all_dice_file_paths = []
         for file in onlyfiles:
-            dice = [x for x in self.dice_groups]
-            file_paths = [[x.image_path for x in y.dice] for y in dice]
-            dice_file_paths = [[x for x in dice_file_path] for dice_file_path in file_paths]
-            all_dice_file_paths = []
             for path in dice_file_paths:
                 all_dice_file_paths.extend(path)
             if str(self.base_resource_path.joinpath(Path(str(file)))) not in all_dice_file_paths:
                 not_found_dice.append(Dice(file, "Ungrouped", self.base_resource_path.joinpath(Path(str(file))), True))
-        return []
+        print(all_dice_file_paths)
+        print(not_found_dice)
+        return not_found_dice
 
     def read_from_file(self):
         file = open(self.dice_config_file, "r")
