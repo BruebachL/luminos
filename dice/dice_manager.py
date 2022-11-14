@@ -50,6 +50,8 @@ class DiceManager(QWidget):
             for dice_group in self.dice_groups:
                 if dice_group is not None:
                     if dice_group.name == "Ungrouped":
+                        if dice_group.dice is None:
+                            dice_group.dice = []
                         dice_group.dice.extend(self.get_all_dice())
         else:
             self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources")).joinpath(Path("dice_pictures")))
@@ -99,7 +101,7 @@ class DiceManager(QWidget):
                 all_dice_file_paths.extend(path)
             if str(self.base_resource_path.joinpath(Path(str(file)))) not in all_dice_file_paths:
                 not_found_dice.append(Dice(file, "Ungrouped", self.base_resource_path.joinpath(Path(str(file))), True))
-        return None
+        return []
 
     def read_from_file(self):
         file = open(self.dice_config_file, "r")
