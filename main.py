@@ -56,7 +56,7 @@ class ThreadedServer(object):
                 return game_state.add_dice_roll(cmd)
             case CommandDiceRequest():
                 server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requests some dice (" + cmd.name + ").")
-                dice_to_return = self.dice_manager.get_dice_for_name(cmd.name)
+                dice_to_return = self.dice_manager.get_dice_for_checksum(cmd.name)
                 if dice_to_return is None:
                     server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requested a dice (" + cmd.name + ") that we didn't have. Requesting from other clients...")
                     requested_dice = self.request_dice_from_clients(client, cmd.name)
@@ -71,7 +71,7 @@ class ThreadedServer(object):
                 server_sequence_log.debug(
                     "Fulfilling dice request (" + cmd.name + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 self.fulfill_dice_request(dice_to_return, client, cmd.port)
-                return json.dumps(InfoDiceRequest(dice_to_return.name, dice_to_return.group, dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1], os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder)
+                return json.dumps(InfoDiceRequest(dice_to_return.checksum, dice_to_return.group, dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1], os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder)
 
     def receive_dice_from_client(self, client_to_receive_from, info_dice_request):
         response = info_dice_request
@@ -142,6 +142,8 @@ class ThreadedServer(object):
             threading.Thread(target=self.send_file, args=(file_client, file_socket, file)).start()
             break
 
+
+    # TODO: Not sure if we can use sendfile here.
     def send_file(self, file_client, file_socket, file):
         server_sequence_log.debug(
             "Sending file to Client (" + file_client.getpeername()[0] + ":" + str(

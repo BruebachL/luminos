@@ -1,6 +1,7 @@
 import json
 
 from character.talent import Talent, TalentEncoder, decode_talent
+from utils.string_utils import fix_up_json_string
 
 
 class TalentGroup:
@@ -21,7 +22,7 @@ def decode_talent_group(dct):
     if dct['class'] == "talent_group":
         talents_in_group = []
         for talent in dct['talents']:
-            talents_in_group.append(json.loads(talent.replace('%', '"'), object_hook=decode_talent))
+            talents_in_group.append(json.loads(str(talent).replace('%', '"').replace("'", '"'), object_hook=decode_talent))
         return TalentGroup(dct['name'], talents_in_group)
     return dct
 
@@ -32,7 +33,7 @@ class TalentGroupEncoder(json.JSONEncoder):
         if isinstance(t, TalentGroup):
             json_talents = []
             for talent in t.talents:
-                json_talents.append(json.dumps(talent, cls=TalentEncoder))
+                json_talents.append(fix_up_json_string(json.dumps(talent, cls=TalentEncoder, ensure_ascii=False)))
             return {"class": 'talent_group', "name": t.name, "talents": json_talents}
         else:
             return super().default(t)

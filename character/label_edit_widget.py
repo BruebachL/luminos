@@ -19,7 +19,7 @@ class ButtonLabelEditWidget:
         self.dice_to_use = []
         for i in range(3):
             if len(self.dice_manager.use_dice) > 0:
-                self.dice_to_use.append(self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].name)
+                self.dice_to_use.append(self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].checksum)
         if initial_value is None:
             initial_value = ""
         check_against_string = ""

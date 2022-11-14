@@ -30,7 +30,7 @@ class DiceManager(QWidget):
                 if dice_group.name == "Ungrouped":
                     dice_group.dice.extend(self.get_all_dice())
         else:
-            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources")).joinpath(Path("dice_pictures")))
+            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures"))))
 
     def update_layout(self):
         self.save_to_file()
@@ -63,9 +63,10 @@ class DiceManager(QWidget):
     def check_if_dice_available(self, dice_to_check):
         not_available = []
         for dice in dice_to_check:
-            if self.get_dice_for_name(dice) is None:
+            if self.get_dice_for_checksum(dice) is None:
                 if dice not in not_available:
                     not_available.append(dice)
+        print(not_available)
         if len(not_available) > 0:
             return not_available
         else:
@@ -76,6 +77,14 @@ class DiceManager(QWidget):
             for dice in dice_group.dice:
                 if dice.name == look_for:
                     return dice
+
+    def get_dice_for_checksum(self, look_for):
+        for dice_group in self.dice_groups:
+            if dice_group.dice is not None:
+                for dice in dice_group.dice:
+                    if dice is not None:
+                        if dice.checksum == look_for:
+                            return dice
 
     def get_all_dice(self):
         not_found_dice = []
@@ -89,7 +98,7 @@ class DiceManager(QWidget):
                 all_dice_file_paths.extend(path)
             if str(self.base_resource_path.joinpath(Path(str(file)))) not in all_dice_file_paths:
                 not_found_dice.append(Dice(file, "Ungrouped", self.base_resource_path.joinpath(Path(str(file))), True))
-        return not_found_dice
+        return None
 
     def read_from_file(self):
         file = open(self.dice_config_file, "r")

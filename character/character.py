@@ -2,6 +2,7 @@ import json
 
 from character.talent import decode_talent
 from character.talent_group import TalentGroup, TalentGroupEncoder, decode_talent_group
+from utils.string_utils import fix_up_json_string
 
 
 def decode_character_sheet(sheet):
@@ -40,7 +41,8 @@ def decode_character(dct):
     if dct['class'] == "character":
         talent_groups = []
         for talent_group in dct['talent_groups']:
-            talent_groups.append(json.loads(talent_group, object_hook=decode_talent_group))
+            print(talent_group)
+            talent_groups.append(json.loads(str(talent_group).replace("'", '"'), object_hook=decode_talent_group))
         return Character(dct['name'], talent_groups)
     return dct
 
@@ -51,7 +53,7 @@ class CharacterEncoder(json.JSONEncoder):
         if isinstance(c, Character):
             json_talents = []
             for talent_group in c.talent_groups:
-                json_talents.append(json.dumps(talent_group, cls=TalentGroupEncoder))
+                json_talents.append(fix_up_json_string(json.dumps(talent_group, cls=TalentGroupEncoder, ensure_ascii=False)))
             return {"class": 'character', "name": c.name, "talent_groups": json_talents}
         else:
             return super().default(c)
