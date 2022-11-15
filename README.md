@@ -10,6 +10,6 @@
 4. Select the address bar at the top and type 'cmd' and press enter to open a command line prompt in the luminos folder. 
 5. (First install only) Type .\install.bat
 6. Type .\env\scripts\activate
-7. Launch the client with 'python client/client.py --ip <server_ip> --name <your_character_name>'
+7. Launch the client with python client/client.py --ip <server_ip> --name <your_character_name>
 
 After the initial installation, Luminos may be launched by repeating steps 3, 4, 6, and 7.
