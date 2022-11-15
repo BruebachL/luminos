@@ -36,6 +36,23 @@ class Character:
                         talents.append(talent)
         return talents
 
+    def update_talent(self, new_talent):
+        print("update fired")
+        for i in range(len(self.talent_groups)):
+            if self.talent_groups[i].name == new_talent.group:
+                print("Found talent group")
+                for j in range(len(self.talent_groups[i].talents)):
+                    if self.talent_groups[i].talents[j].name == new_talent.name:
+                        print("Found Talent")
+                        self.talent_groups[i].talents[j] = new_talent
+
+    def get_base_talents(self):
+        base_talents = []
+        for talent_group in self.talent_groups:
+            if talent_group.name == "Base":
+                for talent in talent_group.talents:
+                    base_talents.append(talent)
+        return base_talents
 
 def decode_character(dct):
     if dct['class'] == "character":

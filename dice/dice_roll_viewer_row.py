@@ -16,7 +16,7 @@ class DiceRollViewerRow(QWidget):
         layout = QHBoxLayout()
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet(
-                "background-image: url(" + str(Path(self.dice_manager.base_path).joinpath("dice_tray.png")) + ");"
+                "background-image: url(" + str(self.dice_manager.base_path.joinpath("dice_tray.png")) + ");"
                 "background-position: center;"
                 "background-repeat: no-repeat;"
                 "border-style: solid;"
@@ -24,8 +24,10 @@ class DiceRollViewerRow(QWidget):
                 "border-color: white;"
                 "color: white;")
         self.current_dice_skin = 0
+
+
         for i in range(len(self.dice_rolls)):
-            if self.current_dice_skin >= len(self.dice_skins) - 1:
+            if self.current_dice_skin >= len(self.dice_skins):
                 self.current_dice_skin = 0
             layout.addWidget(DiceRollWidget(self.dice_manager, self.dice_skins[self.current_dice_skin], str(self.dice_rolls[i])))
             self.current_dice_skin = self.current_dice_skin + 1

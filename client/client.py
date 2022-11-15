@@ -13,6 +13,7 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen, QProgressBar
 
+from character.character_edit_widget import CharacterEditWidget
 from character.character_widget import CharacterWidget
 from character.character import CharacterEncoder, decode_character
 from commands.command import decode_command, InfoRollDice, CommandListenUp, CommandDiceRequest, InfoDiceRequestDecline, \
@@ -75,6 +76,7 @@ class BasicWindow(QWidget):
         self.base_layout = QTabWidget()
         self.dice_manager = DiceManager(self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
+        self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -115,6 +117,9 @@ class BasicWindow(QWidget):
     def character_tab_ui(self):
         """Create the Character page UI."""
         return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
+
+    def character_edit_tab_ui(self):
+        return CharacterEditWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -188,6 +193,7 @@ class BasicWindow(QWidget):
     def listen_until_all_data_received(self, server):
         self.client_sequence_log.debug(
             "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
+        server.setblocking(True)
         length = int.from_bytes(server.recv(12), 'big')
         print("Server length: {}".format(length))
         self.client_sequence_log.debug(
@@ -199,6 +205,9 @@ class BasicWindow(QWidget):
             server.setblocking(True)
             partial_data = server.recv(left_to_receive)
             print(partial_data)
+            if partial_data is not []:
+                while partial_data[0] != 123:
+                    partial_data = partial_data[1:]
             received = str(partial_data, "UTF-8")
             data = data + received
             left_to_receive = left_to_receive - (len(received))
