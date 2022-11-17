@@ -14,9 +14,10 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
 from character.character_edit_widget import CharacterEditWidget
-from character.character_widget import CharacterWidget
+from character.character_widget import CharacterDisplayWidget
 from character.character import CharacterEncoder, decode_character
-from character.inventory_layout import InventoryLayout
+from character.inventory_display_layout import InventoryDisplayLayout
+from character.inventory_edit_layout import InventoryEditLayout
 from commands.command import decode_command, InfoRollDice, CommandListenUp, CommandDiceRequest, InfoDiceRequestDecline, \
     InfoDiceRequest, CommandEncoder
 from dice.dice import Dice
@@ -84,6 +85,7 @@ class BasicWindow(QWidget):
         self.base_layout.addTab(self.character_tab_ui(), "Character")
         self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
+        self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -123,13 +125,16 @@ class BasicWindow(QWidget):
 
     def character_tab_ui(self):
         """Create the Character page UI."""
-        return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
+        return CharacterDisplayWidget(self.character, self.dice_manager, self.output_buffer)
 
     def character_edit_tab_ui(self):
         return CharacterEditWidget(self.character)
 
     def character_inventory_tab_ui(self):
-        return InventoryLayout(self.character)
+        return InventoryDisplayLayout(self.character)
+
+    def character_inventory_edit_tab_ui(self):
+        return InventoryEditLayout(self.character)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -212,10 +217,11 @@ class BasicWindow(QWidget):
         data = ""
         left_to_receive = length
         while len(data) != length:
+            print(len(data))
             server.setblocking(True)
             partial_data = server.recv(left_to_receive)
             print(partial_data)
-            if partial_data is not []:
+            if partial_data is not [] or partial_data is not None:
                 while partial_data[0] != 123:
                     partial_data = partial_data[1:]
             received = str(partial_data, "UTF-8")
@@ -307,12 +313,16 @@ class BasicWindow(QWidget):
                                   cls=CommandEncoder)
         self.client_sequence_log.debug("Sending dice request.")
         self.announce_length_and_send(self.connected_socket, bytes(dice_request, "UTF-8"))
+        info_response = self.listen_until_all_data_received(self.connected_socket)
+        info_response = self.decode_server_command(info_response)
         not_ready_to_receive = True
         while not_ready_to_receive:
             read_sockets, write_sockets, error_sockets = select.select(
                 [self.connected_socket], [self.connected_socket], [self.connected_socket])
             for read_sock in read_sockets:
                 listen_up_response = self.listen_until_all_data_received(read_sock)
+                print(str(listen_up_response))
+                print(listen_up_response)
                 listen_up_response = self.decode_server_command(listen_up_response)
                 self.client_sequence_log.debug("This should be a listen up...")
                 if isinstance(listen_up_response, CommandListenUp):
@@ -345,11 +355,10 @@ class BasicWindow(QWidget):
                     self.client_sequence_log.debug(
                         "Wrote file with " + str(len(data)) + " from " + str(file_host) + ":" + str(
                             listen_up_response.port))
-                    info_response = self.listen_until_all_data_received(read_sock)
-                    info_response = self.decode_server_command(info_response)
                     self.dice_manager.add_dice(
                         Dice(info_response.name, info_response.group, self.dice_manager.base_resource_path.joinpath(info_response.image_path), False))
                     self.dice_manager.update_layout()
+                    print("Received dice.")
                     not_ready_to_receive = False
                 else:
                     self.client_sequence_log.debug(

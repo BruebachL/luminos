@@ -17,6 +17,10 @@ class InventoryItem(object):
         self.description = description
         self.weight = weight
 
+    def equals(self, inventory_item):
+        return self.group == inventory_item.group and self.name == inventory_item.name \
+            and self.description == inventory_item.description and self.weight == inventory_item.weight
+
 def decode_inventory_item(dct):
     if dct['class'] == "inventory_item":
         return InventoryItem(dct['group'], dct['name'], dct['description'], dct['weight'])

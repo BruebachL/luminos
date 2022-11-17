@@ -1,16 +1,16 @@
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QPushButton
 
 from character.inventory_item import InventoryItem
-from character.inventory_item_display_layout import InventoryItemDisplayLayout
 from character.inventory_item_edit_layout import InventoryItemEditLayout
 from utils.string_utils import get_free_name
 
 
 class InventoryItemGroupEditLayout(QVBoxLayout):
 
-    def __init__(self, character, inventory_item_group):
+    def __init__(self, parent, character, inventory_item_group):
         super().__init__()
+        self.parent = parent
         self.character = character
         self.item_group = inventory_item_group
         self.item_group_name_line_edit = QLineEdit()
@@ -18,8 +18,7 @@ class InventoryItemGroupEditLayout(QVBoxLayout):
 
 
     def update_layout(self):
-        self.clear_item(self.layout())
-        self.add_line_edits()
+        self.parent.update_layout()
 
     def clear_item(self, item):
         if hasattr(item, "layout"):
@@ -46,7 +45,7 @@ class InventoryItemGroupEditLayout(QVBoxLayout):
         self.item_group_name_line_edit.textChanged.connect(self.update_item_group_name)
         self.addWidget(self.item_group_name_line_edit)
         for item in self.item_group.items:
-            item_layout = InventoryItemEditLayout(self.character, item)
+            item_layout = InventoryItemEditLayout(self, self.character, item)
             self.addLayout(item_layout)
         add_item_button = QPushButton()
         add_item_button.setText("+")

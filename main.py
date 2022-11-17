@@ -35,6 +35,13 @@ server_sequence_handler = logging.FileHandler("server_sequence.log")
 server_sequence_log.addHandler(server_sequence_handler)
 
 
+def get_free_port(port):
+    port = port + 1
+    if port == 1350:
+        port = 1339
+    return port
+
+
 class ThreadedServer(object):
     def __init__(self, host, port):
         self.host = host
@@ -70,8 +77,13 @@ class ThreadedServer(object):
                         return json.dumps(InfoDiceRequestDecline(dice_to_return), cls=CommandEncoder)
                 server_sequence_log.debug(
                     "Fulfilling dice request (" + cmd.name + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
+                self.announce_length_and_send(client,
+                                              bytes(json.dumps(InfoDiceRequest(dice_to_return.checksum, dice_to_return.group,
+                                                                         dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1],
+                                                                         os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder), "UTF-8"))
                 self.fulfill_dice_request(dice_to_return, client, cmd.port)
-                return json.dumps(InfoDiceRequest(dice_to_return.checksum, dice_to_return.group, dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1], os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder)
+                # We don't broadcast this to all clients, so we return none here
+                return None
 
     def receive_dice_from_client(self, client_to_receive_from, info_dice_request):
         response = info_dice_request
@@ -133,7 +145,13 @@ class ThreadedServer(object):
     def send_file_to_client(self, file, file_length, file_name, client, port):
         file_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         file_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        file_socket.bind((self.host, port))
+        not_connected = True
+        while not_connected:
+            try:
+                file_socket.bind((self.host, port))
+                not_connected = False
+            except OSError as e:
+                port = get_free_port(port)
         self.announce_length_and_send(client, bytes(json.dumps(CommandListenUp(port, file_length, file_name), cls=CommandEncoder), "UTF-8"))
         file_socket.listen(5)
         while True:
@@ -177,13 +195,13 @@ class ThreadedServer(object):
         while True:
             try:
                 data = self.listen_until_all_data_received(client)
+                if not data:
+                    raise ConnectionError('Client disconnected')
                 server_log.debug(data)
                 response = self.execute_command(client, self.game_state, data)
-                if data:
+                if response:
                     # Set the response to echo back the received data
                     self.send_to_clients(bytes(str(response), "UTF-8"))
-                else:
-                    raise ConnectionError('Client disconnected')
             except:
                 traceback.print_exc()
                 self.connected_clients.remove(client)

@@ -15,8 +15,8 @@ class DiceManager(QWidget):
         super().__init__()
         self.base_path = Path(basePath)
         print(self.base_path)
-        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures"))
-        self.dice_config_file = Path.joinpath(self.base_path, "dice.json")
+        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures2"))
+        self.dice_config_file = Path.joinpath(self.base_path, "dice2.json")
         self.dice_groups = []
         self.use_dice = []
         self.read_from_file()
@@ -31,7 +31,7 @@ class DiceManager(QWidget):
                 if dice_group.name == "Ungrouped":
                     dice_group.dice.extend(self.get_all_dice())
         else:
-            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures"))))
+            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures2"))))
         self.update_layout()
 
     def update_layout(self):
