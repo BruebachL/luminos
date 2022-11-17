@@ -14,7 +14,6 @@ class DiceManager(QWidget):
     def __init__(self, basePath):
         super().__init__()
         self.base_path = Path(basePath)
-        print(self.base_path)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures2"))
         self.dice_config_file = Path.joinpath(self.base_path, "dice2.json")
         self.dice_groups = []
@@ -71,7 +70,6 @@ class DiceManager(QWidget):
             if self.get_dice_for_checksum(dice) is None:
                 if dice not in not_available:
                     not_available.append(dice)
-        print(not_available)
         if len(not_available) > 0:
             return not_available
         else:
@@ -94,7 +92,6 @@ class DiceManager(QWidget):
     def get_all_dice(self):
         not_found_dice = []
         onlyfiles = [f for f in listdir(self.base_resource_path) if isfile(join(self.base_resource_path, f))]
-        print(onlyfiles)
         dice = [x for x in self.dice_groups]
         file_paths = [[x.image_path for x in y.dice] for y in dice]
         dice_file_paths = [[x for x in dice_file_path] for dice_file_path in file_paths]
@@ -104,8 +101,6 @@ class DiceManager(QWidget):
                 all_dice_file_paths.extend(path)
             if str(self.base_resource_path.joinpath(Path(str(file)))) not in all_dice_file_paths:
                 not_found_dice.append(Dice(file, "Ungrouped", self.base_resource_path.joinpath(Path(str(file))), True))
-        print(all_dice_file_paths)
-        print(not_found_dice)
         return not_found_dice
 
     def read_from_file(self):
@@ -118,7 +113,6 @@ class DiceManager(QWidget):
         file = open(self.dice_config_file, "w")
         for dice_group in self.dice_groups:
             if dice_group is not None:
-                print("Writing file group ", str(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n"))
                 file.write(json.dumps(dice_group, cls=DiceGroupEncoder) + "\n")
         file.close()
 

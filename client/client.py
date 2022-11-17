@@ -23,6 +23,8 @@ from commands.command import decode_command, InfoRollDice, CommandListenUp, Info
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
+from map.map_layout import MapLayout
+from map.map_manager import MapManager
 from utils.string_utils import fix_up_json_string
 
 
@@ -82,10 +84,12 @@ class BasicWindow(QWidget):
         self.grid_layout = None
         self.base_layout = QTabWidget()
         self.dice_manager = DiceManager(self.base_path)
+        self.map_manager = MapManager(self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
         self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
         self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
+        self.base_layout.addTab(self.map_tab_ui(), "Map")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -135,6 +139,9 @@ class BasicWindow(QWidget):
 
     def character_inventory_edit_tab_ui(self):
         return InventoryEditLayout(self.character)
+
+    def map_tab_ui(self):
+        return MapLayout(self.map_manager)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -273,7 +280,7 @@ class BasicWindow(QWidget):
                 else:
                     self.client_sequence_log.debug("Fulfilling dice request for dice (" + cmd.display_name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(json.dumps(
-                        InfoDiceFile(dice_to_return.checksum, dice_to_return.group, dice_to_return.image_path),
+                        InfoDiceFile(dice_to_return.checksum, dice_to_return.group),
                         cls=CommandEncoder), "UTF-8"))
                     file = open(dice_to_return.image_path, "rb")
                     self.client_sequence_log.debug("Returning dice request on " + self.server_ip + ":" + str(1340))
@@ -387,3 +394,4 @@ if __name__ == '__main__':
         window.save_to_file(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, ensure_ascii=False)))
         print(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))
         window.dice_manager.save_to_file()
+        window.map_manager.save_to_file()

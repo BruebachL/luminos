@@ -83,7 +83,6 @@ def decode_character(dct):
     if dct['class'] == "character":
         talent_groups = []
         for talent_group in dct['talent_groups']:
-            print(talent_group)
             talent_groups.append(json.loads(str(talent_group).replace("'", '"'), object_hook=decode_talent_group))
         return Character(dct['name'], dct['age'], dct['occupation'], talent_groups, json.loads(str(dct['inventory']).replace("'", '"'), object_hook=decode_inventory))
     return dct

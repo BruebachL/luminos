@@ -13,6 +13,7 @@ from commands.command import CommandRollDice, CommandFileRequest, InfoDiceReques
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
+from map.map_manager import MapManager
 from server import gamestate
 from utils.string_utils import fix_up_json_string
 
@@ -55,6 +56,7 @@ class ThreadedServer(object):
         app = QApplication(sys.argv)
         self.game_state = gamestate.GameState("asdf")
         self.dice_manager = DiceManager(base_path)
+        self.map_manager = MapManager(base_path)
         self.connected_clients = []
 
     #server_sequence_log.debug("Client (" + client.getpeername()[0] + "")

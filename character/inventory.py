@@ -51,7 +51,6 @@ class Inventory:
         old_item_group_index = self.get_item_group_index_by_name(item_group_to_update)
         for item in item_group_to_update.items:
             item.group = item_group_to_update.name
-        print(self.inventory_item_groups)
         self.inventory_item_groups[old_item_group_index] = item_group_to_update
 
     def delete_item_group(self, item_group_to_delete):
@@ -64,7 +63,6 @@ def decode_inventory(dct):
     if dct['class'] == "inventory":
         inventory_item_groups = []
         for item_group in dct['inventory_item_groups']:
-            print(item_group)
             inventory_item_groups.append(json.loads(str(item_group).replace("'", '"'), object_hook=decode_inventory_item_group))
         return Inventory(inventory_item_groups)
     return dct
