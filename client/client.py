@@ -8,10 +8,10 @@ import sys
 import time
 from pathlib import Path
 
-from PyQt5 import QtCore, Qt
+from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen, QProgressBar
+from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
 from character.character_edit_widget import CharacterEditWidget
 from character.character_widget import CharacterWidget
@@ -21,7 +21,7 @@ from commands.command import decode_command, InfoRollDice, CommandListenUp, Comm
     InfoDiceRequest, CommandEncoder
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
-from character.dice_roll_manager_layout import DiceRollManagerLayout
+from dice.dice_roll_manager_layout import DiceRollManagerLayout
 from utils.string_utils import fix_up_json_string
 
 

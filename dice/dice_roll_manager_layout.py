@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QListWidget, QVBoxLayout
-from character.dice_roll_button_layout import DiceRollButtonLayout
+from dice.dice_roll_button_layout import DiceRollButtonLayout
 from dice.dice_roll_viewer import DiceRollViewer
 
 
