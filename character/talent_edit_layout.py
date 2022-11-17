@@ -17,6 +17,16 @@ class TalentEditLayout(QHBoxLayout):
             self.line_edit_label.setText(str(self.talent.name))
         self.line_edit_label.textChanged.connect(self.label_changed)
         self.layout().addWidget(self.line_edit_label)
+        
+        # Label edit for the talent shorthand
+        self.line_edit_shorthand = QLineEdit()
+        if self.talent.shorthand is None:
+            self.line_edit_shorthand.setText("")
+        else:
+            self.line_edit_shorthand.setText(str(self.talent.shorthand))
+        self.line_edit_shorthand.textChanged.connect(self.shorthand_changed)
+        self.line_edit_shorthand.setFixedWidth(50)
+        self.layout().addWidget(self.line_edit_shorthand)
 
         # Combo boxes for the talents check against talents
         self.combo_boxes = []
@@ -52,6 +62,11 @@ class TalentEditLayout(QHBoxLayout):
     def label_changed(self):
         print("Changed name of {} to {}".format(self.talent.name, self.line_edit_label.text()))
         self.talent.name = self.line_edit_label.text()
+        self.character.update_talent(self.talent)
+
+    def shorthand_changed(self):
+        print("Changed shorthand of {} from {} to {}".format(self.talent.name ,self.talent.shorthand, self.line_edit_shorthand.text()))
+        self.talent.shorthand = self.line_edit_shorthand.text()
         self.character.update_talent(self.talent)
 
     def update_combo(self):

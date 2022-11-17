@@ -45,6 +45,17 @@ class TalentGroupEditLayout(QVBoxLayout):
         self.layout().addWidget(add_talent_button)
 
     def add_talent(self):
-        self.character.add_talent(Talent(self.talent_group.name, "", "", ["", "", ""], ""))
+        name_found = False
+        name_counter = 1
+        base_name = "New Talent"
+        name = base_name
+        while not name_found:
+            print(name)
+            if name in (existing_talent.name for existing_talent in self.talent_group.talents):
+                name = ' '.join((base_name, str(name_counter)))
+                name_counter = name_counter + 1
+            else:
+                name_found = True
+        self.character.add_talent(Talent(self.talent_group.name, name, "", ["", "", ""], 0))
         self.update_layout()
 
