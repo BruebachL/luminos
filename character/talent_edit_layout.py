@@ -65,7 +65,7 @@ class TalentEditLayout(QHBoxLayout):
         self.character.update_talent(self.talent)
 
     def shorthand_changed(self):
-        print("Changed shorthand of {} from {} to {}".format(self.talent.name ,self.talent.shorthand, self.line_edit_shorthand.text()))
+        print("Changed shorthand of {} from {} to {}".format(self.talent.name, self.talent.shorthand, self.line_edit_shorthand.text()))
         self.talent.shorthand = self.line_edit_shorthand.text()
         self.character.update_talent(self.talent)
 

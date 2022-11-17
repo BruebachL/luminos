@@ -18,8 +18,8 @@ from character.character_widget import CharacterDisplayWidget
 from character.character import CharacterEncoder, decode_character
 from character.inventory_display_layout import InventoryDisplayLayout
 from character.inventory_edit_layout import InventoryEditLayout
-from commands.command import decode_command, InfoRollDice, CommandListenUp, CommandDiceRequest, InfoDiceRequestDecline, \
-    InfoDiceRequest, CommandEncoder
+from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
+    InfoDiceFile, CommandEncoder, CommandFileRequest
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
@@ -262,18 +262,18 @@ class BasicWindow(QWidget):
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
                 self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
-            case CommandDiceRequest():
+            case CommandFileRequest():
                 cmd = json.loads(str(response), object_hook=decode_command)
-                self.client_sequence_log.debug("Received request for dice (" + cmd.name + ")")
-                dice_to_return = self.dice_manager.get_dice_for_checksum(cmd.name)
+                self.client_sequence_log.debug("Received request for dice (" + cmd.display_name + ")")
+                dice_to_return = self.dice_manager.get_dice_for_checksum(cmd.display_name)
                 if dice_to_return is None:
-                    self.client_sequence_log.debug("Have to decline dice request for dice (" + cmd.name + ")")
+                    self.client_sequence_log.debug("Have to decline dice request for dice (" + cmd.display_name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(
-                        json.dumps(InfoDiceRequestDecline(cmd.name), cls=CommandEncoder), "UTF-8"))
+                        json.dumps(InfoDiceRequestDecline(cmd.display_name), cls=CommandEncoder), "UTF-8"))
                 else:
-                    self.client_sequence_log.debug("Fulfilling dice request for dice (" + cmd.name + ")")
+                    self.client_sequence_log.debug("Fulfilling dice request for dice (" + cmd.display_name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(json.dumps(
-                        InfoDiceRequest(dice_to_return.checksum, dice_to_return.group, dice_to_return.image_path),
+                        InfoDiceFile(dice_to_return.checksum, dice_to_return.group, dice_to_return.image_path),
                         cls=CommandEncoder), "UTF-8"))
                     file = open(dice_to_return.image_path, "rb")
                     self.client_sequence_log.debug("Returning dice request on " + self.server_ip + ":" + str(1340))
@@ -309,20 +309,25 @@ class BasicWindow(QWidget):
         file_socket.close()
 
     def request_dice_from_server(self, dice):
-        dice_request = json.dumps(CommandDiceRequest(dice, self.get_free_port()),
-                                  cls=CommandEncoder)
-        self.client_sequence_log.debug("Sending dice request.")
-        self.announce_length_and_send(self.connected_socket, bytes(dice_request, "UTF-8"))
+        data, info_response = self.request_file_from_server(dice)
+        path = self.dice_manager.base_resource_path.joinpath(info_response.name + "." + info_response.extension)
+        file_to_write = open(path, "bw")
+        file_to_write.write(data)
+        self.dice_manager.add_dice(Dice(info_response.file_info.display_name, info_response.file_info.group, path, False))
+        self.dice_manager.update_layout()
+        print("Received dice.")
+
+    def request_file_from_server(self, file):
+        file_request = json.dumps(CommandFileRequest(file, "image:dice", self.get_free_port()), cls=CommandEncoder)
+        self.client_sequence_log.debug("Sending file request.")
+        self.announce_length_and_send(self.connected_socket, bytes(file_request, "UTF-8"))
         info_response = self.listen_until_all_data_received(self.connected_socket)
         info_response = self.decode_server_command(info_response)
-        not_ready_to_receive = True
-        while not_ready_to_receive:
+        while True:
             read_sockets, write_sockets, error_sockets = select.select(
                 [self.connected_socket], [self.connected_socket], [self.connected_socket])
             for read_sock in read_sockets:
                 listen_up_response = self.listen_until_all_data_received(read_sock)
-                print(str(listen_up_response))
-                print(listen_up_response)
                 listen_up_response = self.decode_server_command(listen_up_response)
                 self.client_sequence_log.debug("This should be a listen up...")
                 if isinstance(listen_up_response, CommandListenUp):
@@ -349,20 +354,10 @@ class BasicWindow(QWidget):
                         data = data + received
                         left_to_receive = left_to_receive - (len(received))
                     file_sock.setblocking(False)
-                    file_to_write = open(
-                        self.dice_manager.base_resource_path.joinpath(listen_up_response.file_name.split('\\')[-1].split('/')[-1]), "bw")
-                    file_to_write.write(data)
-                    self.client_sequence_log.debug(
-                        "Wrote file with " + str(len(data)) + " from " + str(file_host) + ":" + str(
-                            listen_up_response.port))
-                    self.dice_manager.add_dice(
-                        Dice(info_response.name, info_response.group, self.dice_manager.base_resource_path.joinpath(info_response.image_path), False))
-                    self.dice_manager.update_layout()
-                    print("Received dice.")
-                    not_ready_to_receive = False
+                    return data, info_response
                 else:
                     self.client_sequence_log.debug(
-                        "Waiting for dice request but received another command in the meantime.")
+                        "Waiting for file request but received another command in the meantime.")
                     self.process_server_response(listen_up_response)
 
 

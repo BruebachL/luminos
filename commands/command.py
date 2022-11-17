@@ -1,9 +1,12 @@
 import json
 
+from utils.string_utils import fix_up_json_string
 
-class CommandDiceRequest:
-    def __init__(self, name, port):
+
+class CommandFileRequest:
+    def __init__(self, name, file_type, port):
         self.name = name
+        self.file_type = file_type
         self.port = port
 
 
@@ -44,28 +47,25 @@ class InfoDiceRequestDecline:
     def __init__(self, name):
         self.name = name
 
-
-class InfoDiceRequest:
-    def __init__(self, name, group, image_path, length, port):
+class InfoFileRequest:
+    def __init__(self, name, extension, file_type, file_length, file_hash, file_info):
         self.name = name
-        self.group = group
-        self.image_path = image_path
-        self.length = length
-        self.port = port
+        self.extension = extension
+        self.file_type = file_type
+        self.file_length = file_length
+        self.file_hash = file_hash
+        self.file_info = file_info
 
-class FollowUpDiceRequest:
-    def __init__(self, name, group, image_path, length, port):
-        self.name = name
+class InfoDiceFile:
+    def __init__(self, display_name, group):
+        self.display_name = display_name
         self.group = group
-        self.image_path = image_path
-        self.length = length
-        self.port = port
 
 
 def decode_command(dct):
     match(dct['class']):
         case "command_dice_request":
-            return CommandDiceRequest(dct['name'], dct['port'])
+            return CommandFileRequest(dct['name'], dct['file_type'], dct['port'])
         case "listen_up":
             return CommandListenUp(dct['port'], dct['length'], dct['filename'])
         case "command_roll_dice":
@@ -74,18 +74,18 @@ def decode_command(dct):
             return InfoRollDice(dct['player'], dct['roll_value'], dct['dice_used'], dct['rolled_for'], dct['rolled_against'], dct['success'], dct['dice_skins'])
         case "info_dice_request_decline":
             return InfoDiceRequestDecline(dct['name'])
-        case "info_dice_request":
-            return InfoDiceRequest(dct['name'], dct['group'], dct['image_path'], dct['length'], dct['port'])
-        case "follow_up_dice_request":
-            return FollowUpDiceRequest(dct['name'], dct['group'], dct['image_path'], dct['length'], dct['port'])
+        case "info_file_request":
+            return InfoFileRequest(dct['name'], dct['extension'], dct['file_type'], dct['file_length'], dct['file_hash'], dct['file_info'])
+        case "info_dice_file":
+            return InfoDiceFile(dct['display_name'], dct['group'])
     return dct
 
 
 class CommandEncoder(json.JSONEncoder):
 
     def default(self, c):
-        if isinstance(c, CommandDiceRequest):
-            return {"class": 'command_dice_request', "name": c.name, "port": c.port}
+        if isinstance(c, CommandFileRequest):
+            return {"class": 'command_dice_request', "name": c.name, "file_type": c.file_type,"port": c.port}
         elif isinstance(c, CommandListenUp):
             return {"class": 'listen_up', "port": c.port, "length": c.length, "filename": c.file_name}
         elif isinstance(c, CommandRollDice):
@@ -98,11 +98,10 @@ class CommandEncoder(json.JSONEncoder):
                     "dice_skins": c.dice_skins}
         elif isinstance(c, InfoDiceRequestDecline):
             return {"class": 'info_dice_request_decline', "name": c.name}
-        elif isinstance(c, InfoDiceRequest):
-            return {"class": 'info_dice_request', "name": c.name, "group": c.group, "image_path": c.image_path,
-                    "length": c.length, "port": c.port}
-        elif isinstance(c, FollowUpDiceRequest):
-            return {"class": 'follow_up_dice_request', "name": c.name, "group": c.group, "image_path": c.image_path,
-                    "length": c.length, "port": c.port}
+        elif isinstance(c, InfoFileRequest):
+            return {"class": 'info_file_request', "name": c.name, "extension": c.extension, "file_type": c.file_type,
+                    "file_length": c.file_length, "file_hash": c.file_hash, "file_info": fix_up_json_string(json.dumps(c.file_info, cls=CommandEncoder))}
+        elif isinstance(c, InfoDiceFile):
+            return {"class": 'info_dice_file', "display_name": c.display_name, "group": c.group}
         else:
             return super().default(c)

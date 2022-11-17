@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -8,11 +9,13 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication
 
-from commands.command import CommandRollDice, CommandDiceRequest, InfoDiceRequestDecline, CommandEncoder, \
-    InfoDiceRequest, CommandListenUp, decode_command
+from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
+    InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from server import gamestate
+from utils.string_utils import fix_up_json_string
+
 base_path = sys.path[0]
 lock = threading.Lock()
 
@@ -61,29 +64,15 @@ class ThreadedServer(object):
             case CommandRollDice():
                 server_sequence_log.debug("Rolling some dice for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 return game_state.add_dice_roll(cmd)
-            case CommandDiceRequest():
-                server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requests some dice (" + cmd.name + ").")
-                dice_to_return = self.dice_manager.get_dice_for_checksum(cmd.name)
-                if dice_to_return is None:
-                    server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requested a dice (" + cmd.name + ") that we didn't have. Requesting from other clients...")
-                    requested_dice = self.request_dice_from_clients(client, cmd.name)
-                    if requested_dice is not None:
-                        server_sequence_log.debug("Someone had the dice (" + cmd.name + ") that Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") requested.")
-                        self.dice_manager.add_dice(requested_dice)
-                    else:
-                        server_sequence_log.debug(
-                            "No one had the dice (" + cmd.name + ") that Client (" + client.getpeername()[
-                                0] + ") requested. Declining request.")
-                        return json.dumps(InfoDiceRequestDecline(dice_to_return), cls=CommandEncoder)
-                server_sequence_log.debug(
-                    "Fulfilling dice request (" + cmd.name + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
-                self.announce_length_and_send(client,
-                                              bytes(json.dumps(InfoDiceRequest(dice_to_return.checksum, dice_to_return.group,
-                                                                         dice_to_return.image_path.split("/")[len(dice_to_return.image_path.split("/")) - 1],
-                                                                         os.path.getsize(dice_to_return.image_path), cmd.port), cls=CommandEncoder), "UTF-8"))
-                self.fulfill_dice_request(dice_to_return, client, cmd.port)
+            case CommandFileRequest():
+                self.fulfill_file_request(client, cmd)
                 # We don't broadcast this to all clients, so we return none here
                 return None
+        
+    def fulfill_file_request(self, client, file_request):
+       match file_request.file_type:
+           case "image:dice":
+                self.fulfill_dice_request(file_request.name, client, file_request.port)
 
     def receive_dice_from_client(self, client_to_receive_from, info_dice_request):
         response = info_dice_request
@@ -98,16 +87,16 @@ class ThreadedServer(object):
             data += buf
         file_to_write = open(response.image_path, "bw")
         file_to_write.write(data)
-        return Dice(response.name, response.group, response.image_path, False)
+        return Dice(response.display_name, response.group, response.image_path, False)
 
     def request_dice_from_client(self, client_to_request_from, dice_to_request):
-        dice_request = CommandDiceRequest(dice_to_request, 1340)
+        dice_request = CommandFileRequest(dice_to_request, 1340)
         self.announce_length_and_send(client_to_request_from, bytes(json.dumps(dice_request, cls=CommandEncoder), "UTF-8"))
         response = self.listen_until_all_data_received(client_to_request_from)
         command = json.loads(str(response, "UTF-8"), object_hook=decode_command)
         if isinstance(command, InfoDiceRequestDecline):
             return None
-        if isinstance(command, InfoDiceRequest):
+        if isinstance(command, InfoDiceFile):
             return self.receive_dice_from_client(client_to_request_from, command)
         return None
 
@@ -118,12 +107,43 @@ class ThreadedServer(object):
                 if returned_dice is not None:
                     return returned_dice
 
-    def fulfill_dice_request(self, dice, client, port):
-        file = open(dice.image_path, "rb")
-        file_length = os.path.getsize(dice.image_path)
-        file_name = dice.image_path
+    def fulfill_dice_request(self, dice_checksum, client, port):
+        server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(
+            client.getpeername()[1]) + ") requests some dice (" + dice_checksum + ").")
+        dice_to_return = self.dice_manager.get_dice_for_checksum(dice_checksum)
+        if dice_to_return is None:
+            server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[
+                                                                                           1]) + ") requested a dice (" + dice_checksum + ") that we didn't have. Requesting from other clients...")
+            requested_dice = self.request_dice_from_clients(client, dice_checksum)
+            if requested_dice is not None:
+                server_sequence_log.debug(
+                    "Someone had the dice (" + dice_checksum + ") that Client (" + client.getpeername()[0] + ":" + str(
+                        client.getpeername()[1]) + ") requested.")
+                self.dice_manager.add_dice(requested_dice)
+            else:
+                server_sequence_log.debug(
+                    "No one had the dice (" + dice_checksum + ") that Client (" + client.getpeername()[
+                        0] + ") requested. Declining request.")
+                return json.dumps(InfoDiceRequestDecline(dice_to_return), cls=CommandEncoder)
         server_sequence_log.debug(
-            "Launched thread for  (" + dice.image_path + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") on port " + str(port))
+            "Fulfilling dice request (" + dice_checksum + ") for Client (" + client.getpeername()[0] + ":" + str(
+                client.getpeername()[1]) + ")")
+        file = open(dice_to_return.image_path, "rb")
+        file_length = os.path.getsize(dice_to_return.image_path)
+        file_name = dice_to_return.image_path
+        file_data = file.read()
+        file_hash = hashlib.sha256(file_data).hexdigest()
+        file.seek(0)
+        server_sequence_log.debug(
+            "Launched thread for  (" + dice_to_return.image_path + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") on port " + str(port))
+
+        self.announce_length_and_send(client,
+                                      bytes(fix_up_json_string(
+                                          json.dumps(InfoFileRequest('_'.join(dice_to_return.image_path.split('\\')[-1].split('/')[-1].split('.')[:-1]),
+                                                                       dice_to_return.image_path.split('.')[-1], "image:dice",
+                                                                       len(file_data), file_hash,
+                                                                       InfoDiceFile(dice_to_return.display_name, dice_to_return.group)),
+                                                     cls=CommandEncoder)), "UTF-8"))
         threading.Thread(target=self.send_file_to_client, args=(file, file_length, file_name, client, port)).start()
 
     def listen(self):

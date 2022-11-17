@@ -26,7 +26,7 @@ class DiceWidget(QWidget):
         image_label.setPixmap(QPixmap.fromImage(image))
         self.layout.addWidget(image_label)
         name_label = QLabel()
-        name_label.setText(self.dice.name)
+        name_label.setText(self.dice.display_name)
         self.layout.addWidget(name_label)
 
     def text_state_changed(self):

@@ -31,7 +31,7 @@ class DiceManager(QWidget):
                 if dice_group.name == "Ungrouped":
                     dice_group.dice.extend(self.get_all_dice())
         else:
-            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures2"))))
+            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), self.base_resource_path))
         self.update_layout()
 
     def update_layout(self):
@@ -56,7 +56,7 @@ class DiceManager(QWidget):
                             dice_group.dice = []
                         dice_group.dice.extend(self.get_all_dice())
         else:
-            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), Path("resources").joinpath(Path("dice_pictures"))))
+            self.dice_groups.append(DiceGroup("Ungrouped", self.get_all_dice(), self.base_resource_path))
 
     def add_dice(self, dice_to_add):
         for dice_group in self.dice_groups:
@@ -80,7 +80,7 @@ class DiceManager(QWidget):
     def get_dice_for_name(self, look_for):
         for dice_group in self.dice_groups:
             for dice in dice_group.dice:
-                if dice.name == look_for:
+                if dice.display_name == look_for:
                     return dice
 
     def get_dice_for_checksum(self, look_for):
@@ -138,7 +138,7 @@ class DiceManager(QWidget):
     def dice_group_change(self, dice_widget):
         for dice_group in self.dice_groups:
             if dice_group.name == dice_widget.dice.group:
-                if dice_widget.dice.name in [x.name for x in dice_group.dice]:
+                if dice_widget.dice.display_name in [x.display_name for x in dice_group.dice]:
                     dice_group.dice.remove(dice_widget.dice)
                     if len(dice_group.dice) == 0:
                         self.dice_groups.remove(dice_group)

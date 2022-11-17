@@ -3,8 +3,8 @@ import json
 
 
 class Dice:
-    def __init__(self, name, group, image_path, use, checksum=None):
-        self.name = name
+    def __init__(self, display_name, group, image_path, use, checksum=None):
+        self.display_name = display_name
         self.group = group
         if isinstance(image_path, str):
             self.image_path = image_path
@@ -26,7 +26,7 @@ def decode_dice(dct):
             checksum = dct['checksum']
         else:
             checksum = None
-        return Dice(dct['name'], dct['group'], dct['image_path'], dct['use'], checksum)
+        return Dice(dct['display_name'], dct['group'], dct['image_path'], dct['use'], checksum)
     return dct
 
 
@@ -34,6 +34,6 @@ class DiceEncoder(json.JSONEncoder):
 
     def default(self, d):
         if isinstance(d, Dice):
-            return {"class": 'dice', "name": d.name, "group": d.group, "image_path": str(d.image_path), "use": d.use, "checksum": d.checksum}
+            return {"class": 'dice', "display_name": d.display_name, "group": d.group, "image_path": str(d.image_path), "use": d.use, "checksum": d.checksum}
         else:
             return super().default(d)
