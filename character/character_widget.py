@@ -9,7 +9,7 @@ class CharacterWidget(QWidget):
         super().__init__()
         encasing_layout = QVBoxLayout()
         character_base_and_info_layout = QHBoxLayout()
-        character_info_layout = CharacterInfoLayout(output_buffer, player)
+        character_info_layout = CharacterInfoLayout(character)
         character_base_and_info_layout.addLayout(character_info_layout)
         talent_tabs = QTabWidget()
         for talent_group in character.talent_groups:

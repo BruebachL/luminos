@@ -27,6 +27,7 @@ from utils.string_utils import fix_up_json_string
 class BasicWindow(QWidget):
     def __init__(self, server_ip, server_port, player_name):
         super().__init__()
+        self.base_path = Path(os.path.dirname(Path(sys.path[0])))
 
         # Splash screen setup
         self.splash_screen = QSplashScreen(QPixmap(str(Path("resources").joinpath(Path("splash_screen.png")))))
@@ -37,8 +38,12 @@ class BasicWindow(QWidget):
         self.splash_screen.showMessage("Loading character...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
         self.player = player_name
-        self.base_path = Path(os.path.dirname(Path(sys.path[0])))
-        character_to_read = open(self.base_path.joinpath("character.json"), "r")
+        self.character_sheet_path = self.base_path.joinpath("character_" + self.player + ".json")
+        if not os.path.exists(self.character_sheet_path):
+            with open(self.character_sheet_path, "w+") as file:
+                with open(self.base_path.joinpath("character.json")) as default_file:
+                    file.write(default_file.read())
+        character_to_read = open(self.character_sheet_path, "r")
         character_json = character_to_read.read()
         character_to_read.close()
         self.character = json.loads(str(character_json), object_hook=decode_character)
@@ -119,7 +124,7 @@ class BasicWindow(QWidget):
         return CharacterWidget(self.player, self.character, self.dice_manager, self.output_buffer)
 
     def character_edit_tab_ui(self):
-        return CharacterEditWidget(self.player, self.character, self.dice_manager, self.output_buffer)
+        return CharacterEditWidget(self.character)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -347,14 +352,14 @@ class BasicWindow(QWidget):
                     self.process_server_response(listen_up_response)
 
 
-def save_to_file(character_to_write):
-    try:
-        with open("character.json", "w") as file:
-            file.write(character_to_write)
-            file.close()
-    except Exception as e:
-        import traceback
-        traceback.print_exc(e)
+    def save_to_file(self, character_to_write):
+        try:
+            with open(self.character_sheet_path, "w") as file:
+                file.write(character_to_write)
+                file.close()
+        except Exception as e:
+            import traceback
+            traceback.print_exc(e)
 
 
 if __name__ == '__main__':
@@ -370,6 +375,6 @@ if __name__ == '__main__':
         sys.exit(app.exec_())
     finally:
         print("saving to file")
-        save_to_file(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, ensure_ascii=False)))
+        window.save_to_file(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, ensure_ascii=False)))
         print(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))
         window.dice_manager.save_to_file()

@@ -10,6 +10,10 @@ class Talent:
         self.check_against = check_against
         self.value = value
 
+    def equals(self, talent):
+        return self.name == talent.name and self.shorthand == talent.shorthand \
+            and self.check_against == talent.check_against and self.value == talent.value
+
 
 def decode_talent(dct):
     if dct['class'] == "talent":

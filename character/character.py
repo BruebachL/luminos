@@ -14,13 +14,15 @@ def decode_character_sheet(sheet):
 
 
 class Character:
-    def __init__(self, name, fields):
+    def __init__(self, name, age, occupation, fields):
         self.name = name
+        self.age = age
+        self.occupation = occupation
         self.talent_groups = []
         self.fields = []
-        self.add_talents(fields)
+        self.add_talent_groups(fields)
 
-    def add_talents(self, groups):
+    def add_talent_groups(self, groups):
         for group in groups:
             if isinstance(group, TalentGroup):
                 self.talent_groups.append(group)
@@ -36,15 +38,33 @@ class Character:
                         talents.append(talent)
         return talents
 
-    def update_talent(self, new_talent):
-        print("update fired")
+    def get_talent_index_by_name(self, talent_to_get):
         for i in range(len(self.talent_groups)):
-            if self.talent_groups[i].name == new_talent.group:
-                print("Found talent group")
+            if self.talent_groups[i].name == talent_to_get.group:
                 for j in range(len(self.talent_groups[i].talents)):
-                    if self.talent_groups[i].talents[j].name == new_talent.name:
-                        print("Found Talent")
-                        self.talent_groups[i].talents[j] = new_talent
+                    if self.talent_groups[i].talents[j].name == talent_to_get.name:
+                        return i, j
+
+    def add_talent(self, talent_to_add):
+        found = False
+        for talent_group in self.talent_groups:
+            if talent_group.name == talent_to_add.group:
+                talent_group.talents.append(talent_to_add)
+                found = True
+        if not found:
+            self.talent_groups.append(TalentGroup(talent_to_add.group, [talent_to_add]))
+
+
+    def update_talent(self, talent_to_update):
+        old_talent_group, old_talent_index = self.get_talent_index_by_name(talent_to_update)
+        self.talent_groups[old_talent_group].talents[old_talent_index] = talent_to_update
+
+    def delete_talent(self, talent_to_delete):
+        for talent_group in self.talent_groups:
+            for talent in talent_group.talents:
+                if talent.equals(talent_to_delete):
+                    talent_group.talents.remove(talent)
+                    break
 
     def get_base_talents(self):
         base_talents = []
@@ -60,7 +80,7 @@ def decode_character(dct):
         for talent_group in dct['talent_groups']:
             print(talent_group)
             talent_groups.append(json.loads(str(talent_group).replace("'", '"'), object_hook=decode_talent_group))
-        return Character(dct['name'], talent_groups)
+        return Character(dct['name'], dct['age'], dct['occupation'], talent_groups)
     return dct
 
 
@@ -71,6 +91,6 @@ class CharacterEncoder(json.JSONEncoder):
             json_talents = []
             for talent_group in c.talent_groups:
                 json_talents.append(fix_up_json_string(json.dumps(talent_group, cls=TalentGroupEncoder, ensure_ascii=False)))
-            return {"class": 'character', "name": c.name, "talent_groups": json_talents}
+            return {"class": 'character', "name": c.name, "age": c.age, "occupation": c.occupation, "talent_groups": json_talents}
         else:
             return super().default(c)
