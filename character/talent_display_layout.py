@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QFormLayout, QWidget
 from character.label_edit_widget import ButtonLabelEditWidget
 
 
-class TalentLayout(QFormLayout):
+class TalentDisplayLayout(QFormLayout):
     def __init__(self, output_buffer, dice_manager, character, talent_group):
         super().__init__()
         self.setSpacing(10)

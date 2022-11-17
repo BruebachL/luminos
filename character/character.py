@@ -23,7 +23,7 @@ class Character:
         self.occupation = occupation
         self.talent_groups = []
         self.fields = []
-        self.inventory = Inventory((InventoryItemGroup("Test Group 1", (InventoryItem("Test Group 1", "Test Item 1", "Test Description 1", 5), InventoryItem("Test Group 1", "Test Item 2", "Test Description 2", 10))), InventoryItemGroup("Test Group 2", (InventoryItem("Test Group 2", "Test Item 3", "Test Description 3", 15), InventoryItem("Test Group 2", "Test Item 4", "Test Description 4", 25), InventoryItem("Test Group 2", "Test Item 5", "Test Description 5", 55)))))
+        self.inventory = inventory
         self.add_talent_groups(talent_groups)
 
     def add_talent_groups(self, groups):
@@ -42,6 +42,8 @@ class Character:
                         talents.append(talent)
         return talents
 
+    #TODO: I'm honestly not sure if we need all these functions to add/update in such a convoluted way.
+
     def get_talent_index_by_name(self, talent_to_get):
         for i in range(len(self.talent_groups)):
             if self.talent_groups[i].name == talent_to_get.group:
@@ -57,7 +59,6 @@ class Character:
                 found = True
         if not found:
             self.talent_groups.append(TalentGroup(talent_to_add.group, [talent_to_add]))
-
 
     def update_talent(self, talent_to_update):
         old_talent_group, old_talent_index = self.get_talent_index_by_name(talent_to_update)

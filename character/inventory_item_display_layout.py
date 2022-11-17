@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QHBoxLayout, QLabel
 
 
-class InventoryItemLayout(QHBoxLayout):
+class InventoryItemDisplayLayout(QHBoxLayout):
 
     def __init__(self, item):
         super().__init__()

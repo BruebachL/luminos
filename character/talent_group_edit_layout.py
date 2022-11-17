@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QPushButton
 
 from character.talent import Talent
 from character.talent_edit_layout import TalentEditLayout
+from utils.string_utils import get_free_name
 
 
 class TalentGroupEditLayout(QVBoxLayout):
@@ -45,17 +46,9 @@ class TalentGroupEditLayout(QVBoxLayout):
         self.layout().addWidget(add_talent_button)
 
     def add_talent(self):
-        name_found = False
-        name_counter = 1
-        base_name = "New Talent"
-        name = base_name
-        while not name_found:
-            print(name)
-            if name in (existing_talent.name for existing_talent in self.talent_group.talents):
-                name = ' '.join((base_name, str(name_counter)))
-                name_counter = name_counter + 1
-            else:
-                name_found = True
-        self.character.add_talent(Talent(self.talent_group.name, name, "", ["", "", ""], 0))
+        self.character.add_talent(
+            Talent(self.talent_group.name,
+                   get_free_name("New Talent", (existing_talent.name for existing_talent in self.talent_group.talents)),
+                   "", ["", "", ""], 0))
         self.update_layout()
 

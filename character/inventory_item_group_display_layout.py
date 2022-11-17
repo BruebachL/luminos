@@ -1,10 +1,10 @@
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QVBoxLayout, QLabel
 
-from character.inventory_item_layout import InventoryItemLayout
+from character.inventory_item_display_layout import InventoryItemDisplayLayout
 
 
-class InventoryItemGroupLayout(QVBoxLayout):
+class InventoryItemGroupDisplayLayout(QVBoxLayout):
 
     def __init__(self, inventory_item_group):
         super().__init__()
@@ -15,5 +15,5 @@ class InventoryItemGroupLayout(QVBoxLayout):
         self.item_group_label.setFont(self.font)
         self.addWidget(self.item_group_label)
         for item in inventory_item_group.items:
-            item_layout = InventoryItemLayout(item)
+            item_layout = InventoryItemDisplayLayout(item)
             self.addLayout(item_layout)
