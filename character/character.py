@@ -1,5 +1,8 @@
 import json
 
+from character.inventory import decode_inventory, InventoryEncoder, Inventory
+from character.inventory_item import InventoryItem
+from character.inventory_item_group import InventoryItemGroup
 from character.talent import decode_talent
 from character.talent_group import TalentGroup, TalentGroupEncoder, decode_talent_group
 from utils.string_utils import fix_up_json_string
@@ -14,13 +17,14 @@ def decode_character_sheet(sheet):
 
 
 class Character:
-    def __init__(self, name, age, occupation, fields):
+    def __init__(self, name, age, occupation, talent_groups, inventory):
         self.name = name
         self.age = age
         self.occupation = occupation
         self.talent_groups = []
         self.fields = []
-        self.add_talent_groups(fields)
+        self.inventory = Inventory((InventoryItemGroup("Test Group 1", (InventoryItem("Test Group 1", "Test Item 1", "Test Description 1", 5), InventoryItem("Test Group 1", "Test Item 2", "Test Description 2", 10))), InventoryItemGroup("Test Group 2", (InventoryItem("Test Group 2", "Test Item 3", "Test Description 3", 15), InventoryItem("Test Group 2", "Test Item 4", "Test Description 4", 25), InventoryItem("Test Group 2", "Test Item 5", "Test Description 5", 55)))))
+        self.add_talent_groups(talent_groups)
 
     def add_talent_groups(self, groups):
         for group in groups:
@@ -80,7 +84,7 @@ def decode_character(dct):
         for talent_group in dct['talent_groups']:
             print(talent_group)
             talent_groups.append(json.loads(str(talent_group).replace("'", '"'), object_hook=decode_talent_group))
-        return Character(dct['name'], dct['age'], dct['occupation'], talent_groups)
+        return Character(dct['name'], dct['age'], dct['occupation'], talent_groups, json.loads(str(dct['inventory']).replace("'", '"'), object_hook=decode_inventory))
     return dct
 
 
@@ -91,6 +95,8 @@ class CharacterEncoder(json.JSONEncoder):
             json_talents = []
             for talent_group in c.talent_groups:
                 json_talents.append(fix_up_json_string(json.dumps(talent_group, cls=TalentGroupEncoder, ensure_ascii=False)))
-            return {"class": 'character', "name": c.name, "age": c.age, "occupation": c.occupation, "talent_groups": json_talents}
+            return {"class": 'character', "name": c.name, "age": c.age, "occupation": c.occupation,
+                    "inventory": fix_up_json_string(json.dumps(c.inventory, cls=InventoryEncoder, ensure_ascii=False)),
+                    "talent_groups": json_talents}
         else:
             return super().default(c)

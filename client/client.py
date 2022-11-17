@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSpl
 from character.character_edit_widget import CharacterEditWidget
 from character.character_widget import CharacterWidget
 from character.character import CharacterEncoder, decode_character
+from character.inventory_layout import InventoryLayout
 from commands.command import decode_command, InfoRollDice, CommandListenUp, CommandDiceRequest, InfoDiceRequestDecline, \
     InfoDiceRequest, CommandEncoder
 from dice.dice import Dice
@@ -82,6 +83,7 @@ class BasicWindow(QWidget):
         self.dice_manager = DiceManager(self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
         self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
+        self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -125,6 +127,9 @@ class BasicWindow(QWidget):
 
     def character_edit_tab_ui(self):
         return CharacterEditWidget(self.character)
+
+    def character_inventory_tab_ui(self):
+        return InventoryLayout(self.character)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
