@@ -141,7 +141,7 @@ class ThreadedServer(object):
 
         self.announce_length_and_send(client,
                                       bytes(fix_up_json_string(
-                                          json.dumps(InfoFileRequest('_'.join(dice_to_return.image_path.split('\\')[-1].split('/')[-1].split('.')[:-1]),
+                                          json.dumps(InfoFileRequest(os.path.split(dice_to_return.image_path)[-1].split('.')[:-1],
                                                                        dice_to_return.image_path.split('.')[-1], "image:dice",
                                                                        len(file_data), file_hash,
                                                                        InfoDiceFile(dice_to_return.display_name, dice_to_return.group)),

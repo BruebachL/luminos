@@ -14,8 +14,8 @@ class DiceManager(QWidget):
     def __init__(self, basePath):
         super().__init__()
         self.base_path = Path(basePath)
-        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures2"))
-        self.dice_config_file = Path.joinpath(self.base_path, "dice2.json")
+        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures"))
+        self.dice_config_file = Path.joinpath(self.base_path, "dice.json")
         self.dice_groups = []
         self.use_dice = []
         self.read_from_file()

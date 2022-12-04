@@ -11,7 +11,7 @@ class DiceGroupWidget(QWidget):
         self.dice_manager = dice_manager
         self.dice_group = dice_group
         self.width = int(self.width() / 200)
-        height = int(self.height() / 200)
+        self.height = int(self.height() / 200)
         self.row_counter = 0
         self.column_counter = 0
         self.add_dice_widgets()

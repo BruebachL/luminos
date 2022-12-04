@@ -16,8 +16,14 @@ class CommandListenUp:
         self.length = length
         self.file_name = file_name
 
-class CommandRollDice:
 
+class CommandRevealClue:
+    def __init__(self, file_hash, revealed):
+        self.file_hash = file_hash
+        self.revealed = revealed
+
+
+class CommandRollDice:
     def __init__(self, character, amount, sides, rolled_for, rolled_against, equalizer, dice_skins):
         self.character = character
         self.amount = amount
@@ -29,7 +35,6 @@ class CommandRollDice:
 
 
 class InfoRollDice:
-
     def __init__(self, player, roll_value, dice_used, rolled_for, rolled_against, success, dice_skins):
         self.player = player
         self.roll_value = roll_value
@@ -47,6 +52,7 @@ class InfoDiceRequestDecline:
     def __init__(self, name):
         self.name = name
 
+
 class InfoFileRequest:
     def __init__(self, name, extension, file_type, file_length, file_hash, file_info):
         self.name = name
@@ -56,10 +62,17 @@ class InfoFileRequest:
         self.file_hash = file_hash
         self.file_info = file_info
 
+
 class InfoDiceFile:
     def __init__(self, display_name, group):
         self.display_name = display_name
         self.group = group
+
+
+class InfoClueFile:
+    def __init__(self, display_name, revealed):
+        self.display_name = display_name
+        self.revealed = revealed
 
 
 def decode_command(dct):
@@ -78,6 +91,8 @@ def decode_command(dct):
             return InfoFileRequest(dct['name'], dct['extension'], dct['file_type'], dct['file_length'], dct['file_hash'], dct['file_info'])
         case "info_dice_file":
             return InfoDiceFile(dct['display_name'], dct['group'])
+        case "info_clue_file":
+            return InfoClueFile(dct['display_name'], dct['revealed'])
     return dct
 
 
@@ -103,5 +118,7 @@ class CommandEncoder(json.JSONEncoder):
                     "file_length": c.file_length, "file_hash": c.file_hash, "file_info": fix_up_json_string(json.dumps(c.file_info, cls=CommandEncoder))}
         elif isinstance(c, InfoDiceFile):
             return {"class": 'info_dice_file', "display_name": c.display_name, "group": c.group}
+        elif isinstance(c, InfoClueFile):
+            return {"class": 'info_clue_file', "display_name": c.display_name, "revealed": c.revealed}
         else:
             return super().default(c)

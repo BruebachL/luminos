@@ -18,8 +18,11 @@ from character.character_widget import CharacterDisplayWidget
 from character.character import CharacterEncoder, decode_character
 from character.inventory_display_layout import InventoryDisplayLayout
 from character.inventory_edit_layout import InventoryEditLayout
+from clues.clue import Clue
+from clues.clue_display_layout import ClueDisplayLayout
+from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
-    InfoDiceFile, CommandEncoder, CommandFileRequest
+    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
@@ -85,11 +88,13 @@ class BasicWindow(QWidget):
         self.base_layout = QTabWidget()
         self.dice_manager = DiceManager(self.base_path)
         self.map_manager = MapManager(self.base_path)
+        self.clue_manager = ClueManager(self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
         self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
         self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
         self.base_layout.addTab(self.map_tab_ui(), "Map")
+        self.base_layout.addTab(self.clue_tab_ui(), "Clues")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -141,7 +146,10 @@ class BasicWindow(QWidget):
         return InventoryEditLayout(self.character)
 
     def map_tab_ui(self):
-        return MapLayout(self.map_manager)
+        return MapLayout(self, self.map_manager)
+
+    def clue_tab_ui(self):
+        return ClueDisplayLayout(self.clue_manager)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -266,6 +274,13 @@ class BasicWindow(QWidget):
                         self.request_dice_from_server(dice)
                 self.grid_layout.label.add_dice_roll(response.roll_value, response.dice_skins)
                 self.grid_layout.listview.insertItem(0, str(response))
+            case CommandRevealClue():
+                clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
+                if clue_to_reveal is None:
+                    self.request_clue_from_server(response.file_hash)
+                clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
+                clue_to_reveal.revealed = True
+                #self.clue_manager.update_layout()
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
                 self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
@@ -315,17 +330,27 @@ class BasicWindow(QWidget):
         file_client.sendfile(file)
         file_socket.close()
 
+    def request_clue_from_server(self, clue):
+        data, info_response = self.request_file_from_server(clue, "image:clue")
+        path = self.clue_manager.base_resource_path.joinpath(info_response.name + "." + info_response.extension)
+        file_to_write = open(path, "bw")
+        file_to_write.write(data)
+        self.clue_manager.clues.append(Clue(info_response.file_hash, path, info_response.file_info.display_name, info_response.file_info.revealed))
+        #self.clue_manager.update_layout()
+        print("Received dice.")
+
     def request_dice_from_server(self, dice):
-        data, info_response = self.request_file_from_server(dice)
-        path = self.dice_manager.base_resource_path.joinpath(info_response.name + "." + info_response.extension)
+        data, info_response = self.request_file_from_server(dice, "image:dice")
+        print(str(info_response.name) + "." + str(info_response.extension))
+        path = self.dice_manager.base_resource_path.joinpath(str(info_response.name) + "." + str(info_response.extension))
         file_to_write = open(path, "bw")
         file_to_write.write(data)
         self.dice_manager.add_dice(Dice(info_response.file_info.display_name, info_response.file_info.group, path, False))
         self.dice_manager.update_layout()
         print("Received dice.")
 
-    def request_file_from_server(self, file):
-        file_request = json.dumps(CommandFileRequest(file, "image:dice", self.get_free_port()), cls=CommandEncoder)
+    def request_file_from_server(self, file_hash, file_type):
+        file_request = json.dumps(CommandFileRequest(file_hash, file_type, self.get_free_port()), cls=CommandEncoder)
         self.client_sequence_log.debug("Sending file request.")
         self.announce_length_and_send(self.connected_socket, bytes(file_request, "UTF-8"))
         info_response = self.listen_until_all_data_received(self.connected_socket)
@@ -395,3 +420,4 @@ if __name__ == '__main__':
         print(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))
         window.dice_manager.save_to_file()
         window.map_manager.save_to_file()
+        window.clue_manager.save_to_file()
