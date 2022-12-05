@@ -9,10 +9,12 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication
 
+from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
-    InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest
+    InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
+from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
 from server import gamestate
 from utils.string_utils import fix_up_json_string
@@ -55,8 +57,9 @@ class ThreadedServer(object):
         self.sock.bind((self.host, self.port))
         app = QApplication(sys.argv)
         self.game_state = gamestate.GameState("asdf")
+        self.clue_manager = ClueManager(base_path)
         self.dice_manager = DiceManager(base_path)
-        self.map_manager = MapManager(base_path)
+        self.map_manager = MapManager(None, base_path)
         self.connected_clients = []
 
     #server_sequence_log.debug("Client (" + client.getpeername()[0] + "")
@@ -67,14 +70,67 @@ class ThreadedServer(object):
                 server_sequence_log.debug("Rolling some dice for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 return game_state.add_dice_roll(cmd)
             case CommandFileRequest():
+                print("File requested.")
                 self.fulfill_file_request(client, cmd)
                 # We don't broadcast this to all clients, so we return none here
                 return None
+            case _:
+                print("Unknown command:")
+                print(cmd)
+
+    def get_requested_file_from_managers(self, file_hash, file_type):
+        file_to_return, file_info_detail = None, None
+        match file_type:
+            case "image:clue":
+                file_to_return = self.clue_manager.get_path_for_hash(file_hash)
+                clue_info = self.clue_manager.get_clue_for_hash(file_hash)
+                file_info_detail = InfoClueFile(clue_info.display_name, clue_info.revealed)
+            case "image:dice":
+                file_to_return = self.dice_manager.get_path_for_hash(file_hash)
+                dice_info = self.dice_manager.get_dice_for_hash(file_hash)
+                file_info_detail = InfoDiceFile(dice_info.display_name, dice_info.group)
+            case "image:map":
+                file_to_return = self.map_manager.get_path_for_hash(file_hash)
+                map_info = self.map_manager.get_map_info_for_hash(file_hash)
+                if isinstance(map_info, BaseMapInfo):
+                    file_info_detail = InfoMapFile(True, True)
+                else:
+                    file_info_detail = InfoMapFile(False, map_info.revealed)
+        return file_to_return, file_info_detail
+
+    def get_file_information(self, file_path):
+        file = open(file_path, "rb")
+        file_length = os.path.getsize(file_path)
+        file_name = file_path
+        file_data = file.read()
+        file_hash = hashlib.sha256(file_data).hexdigest()
+        file.seek(0)
+        print(os.path.split(file_path))
+        print(os.path.split(file_path)[1])
+        print(os.path.split(file_path)[1].split('.'))
+        print('.'.join(os.path.split(file_path)[1].split('.')[:-1]))
+        return file, InfoFileRequest('.'.join(os.path.split(file_path)[1].split('.')[:-1]),
+                                                                       file_path.split('.')[-1], "image:dice",
+                                                                       len(file_data), file_hash, None)
         
     def fulfill_file_request(self, client, file_request):
-       match file_request.file_type:
-           case "image:dice":
-                self.fulfill_dice_request(file_request.name, client, file_request.port)
+        file_to_return, file_info_detail = self.get_requested_file_from_managers(file_request.file_hash, file_request.file_type)
+        print("Got requested file:")
+        print(file_to_return)
+        # Check if we actually have the requested file
+        if file_to_return is None:
+            print("Didn't have requested file. Requesting from clients...")
+            raise Exception
+        # Gather file information
+        file, file_info = self.get_file_information(file_to_return)
+        file_info.file_info = file_info_detail
+        print(fix_up_json_string(json.dumps(file_info, cls=CommandEncoder)))
+        # Send it
+        self.announce_length_and_send(client,
+                                      bytes(fix_up_json_string(json.dumps(file_info, cls=CommandEncoder)), "UTF-8"))
+        print("Sent announcement.")
+        threading.Thread(target=self.send_file_to_client,
+                         args=(file, file_info.file_length, file_to_return, client, file_request.port)).start()
 
     def receive_dice_from_client(self, client_to_receive_from, info_dice_request):
         response = info_dice_request
@@ -112,7 +168,7 @@ class ThreadedServer(object):
     def fulfill_dice_request(self, dice_checksum, client, port):
         server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(
             client.getpeername()[1]) + ") requests some dice (" + dice_checksum + ").")
-        dice_to_return = self.dice_manager.get_dice_for_checksum(dice_checksum)
+        dice_to_return = self.dice_manager.get_dice_for_hash(dice_checksum)
         if dice_to_return is None:
             server_sequence_log.debug("Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[
                                                                                            1]) + ") requested a dice (" + dice_checksum + ") that we didn't have. Requesting from other clients...")
@@ -130,23 +186,13 @@ class ThreadedServer(object):
         server_sequence_log.debug(
             "Fulfilling dice request (" + dice_checksum + ") for Client (" + client.getpeername()[0] + ":" + str(
                 client.getpeername()[1]) + ")")
-        file = open(dice_to_return.image_path, "rb")
-        file_length = os.path.getsize(dice_to_return.image_path)
-        file_name = dice_to_return.image_path
-        file_data = file.read()
-        file_hash = hashlib.sha256(file_data).hexdigest()
-        file.seek(0)
+
         server_sequence_log.debug(
             "Launched thread for  (" + dice_to_return.image_path + ") for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ") on port " + str(port))
-
-        self.announce_length_and_send(client,
-                                      bytes(fix_up_json_string(
-                                          json.dumps(InfoFileRequest(os.path.split(dice_to_return.image_path)[-1].split('.')[:-1],
-                                                                       dice_to_return.image_path.split('.')[-1], "image:dice",
-                                                                       len(file_data), file_hash,
-                                                                       InfoDiceFile(dice_to_return.display_name, dice_to_return.group)),
-                                                     cls=CommandEncoder)), "UTF-8"))
-        threading.Thread(target=self.send_file_to_client, args=(file, file_length, file_name, client, port)).start()
+        file, file_info = self.get_file_information(dice_to_return.image_path)
+        file_info.file_info = InfoDiceFile(dice_to_return.display_name, dice_to_return.group)
+        self.announce_length_and_send(client, bytes(fix_up_json_string(json.dumps(file_info, cls=CommandEncoder)), "UTF-8"))
+        threading.Thread(target=self.send_file_to_client, args=(file, file_info.file_length, dice_to_return.image_path, client, port)).start()
 
     def listen(self):
         self.sock.listen(5)

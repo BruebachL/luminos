@@ -22,12 +22,13 @@ from clues.clue import Clue
 from clues.clue_display_layout import ClueDisplayLayout
 from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
-    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue
+    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
-from map.map_layout import MapLayout
+from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
+from map.overlay_map_info import OverlayMapInfo
 from utils.string_utils import fix_up_json_string
 
 
@@ -87,13 +88,13 @@ class BasicWindow(QWidget):
         self.grid_layout = None
         self.base_layout = QTabWidget()
         self.dice_manager = DiceManager(self.base_path)
-        self.map_manager = MapManager(self.base_path)
+        self.map_manager = MapManager(self, self.base_path)
         self.clue_manager = ClueManager(self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
         self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
         self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
-        self.base_layout.addTab(self.map_tab_ui(), "Map")
+        self.base_layout.addTab(self.map_manager, "Map")
         self.base_layout.addTab(self.clue_tab_ui(), "Clues")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
@@ -144,9 +145,6 @@ class BasicWindow(QWidget):
 
     def character_inventory_edit_tab_ui(self):
         return InventoryEditLayout(self.character)
-
-    def map_tab_ui(self):
-        return MapLayout(self, self.map_manager)
 
     def clue_tab_ui(self):
         return ClueDisplayLayout(self.clue_manager)
@@ -281,13 +279,20 @@ class BasicWindow(QWidget):
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
                 clue_to_reveal.revealed = True
                 #self.clue_manager.update_layout()
+            case CommandRevealMapOverlay():
+                map_overlay_to_reveal = self.map_manager.get_map_info_for_hash(response.file_hash)
+                if map_overlay_to_reveal is None:
+                    self.request_map_from_server(response.file_hash)
+                else:
+                    map_overlay_to_reveal.revealed = True
+                self.map_manager.update_layout()
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
                 self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
             case CommandFileRequest():
                 cmd = json.loads(str(response), object_hook=decode_command)
                 self.client_sequence_log.debug("Received request for dice (" + cmd.display_name + ")")
-                dice_to_return = self.dice_manager.get_dice_for_checksum(cmd.display_name)
+                dice_to_return = self.dice_manager.get_dice_for_hash(cmd.display_name)
                 if dice_to_return is None:
                     self.client_sequence_log.debug("Have to decline dice request for dice (" + cmd.display_name + ")")
                     self.announce_length_and_send(self.connected_socket, bytes(
@@ -332,22 +337,36 @@ class BasicWindow(QWidget):
 
     def request_clue_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "image:clue")
-        path = self.clue_manager.base_resource_path.joinpath(info_response.name + "." + info_response.extension)
-        file_to_write = open(path, "bw")
-        file_to_write.write(data)
+        path = self.write_file_to_path(data, self.clue_manager.base_resource_path, info_response)
         self.clue_manager.clues.append(Clue(info_response.file_hash, path, info_response.file_info.display_name, info_response.file_info.revealed))
         #self.clue_manager.update_layout()
-        print("Received dice.")
+        print("Received clue.")
 
     def request_dice_from_server(self, dice):
         data, info_response = self.request_file_from_server(dice, "image:dice")
         print(str(info_response.name) + "." + str(info_response.extension))
-        path = self.dice_manager.base_resource_path.joinpath(str(info_response.name) + "." + str(info_response.extension))
-        file_to_write = open(path, "bw")
-        file_to_write.write(data)
+        path = self.write_file_to_path(data, self.dice_manager.base_resource_path, info_response)
         self.dice_manager.add_dice(Dice(info_response.file_info.display_name, info_response.file_info.group, path, False))
         self.dice_manager.update_layout()
         print("Received dice.")
+
+    def request_map_from_server(self, map_hash):
+        data, info_response = self.request_file_from_server(map_hash, "image:map")
+        print(str(info_response.name) + "." + str(info_response.extension))
+        path = self.write_file_to_path(data, self.map_manager.base_resource_path, info_response)
+        if info_response.base_map:
+            self.map_manager.base_maps.append(BaseMapInfo(path, info_response.file_hash, []))
+            print("Received Base Map.")
+        else:
+            self.map_manager.get_active_map().overlays.append(OverlayMapInfo(path, info_response.file_hash, info_response.file_info.revealed))
+            print("Received Map Overlay.")
+        self.map_manager.update_layout()
+
+
+    def write_file_to_path(self, data, path, info_response):
+        file_to_write = open(path.joinpath(str(info_response.name) + "." + str(info_response.extension)), "bw")
+        file_to_write.write(data)
+        return path.joinpath(str(info_response.name) + "." + str(info_response.extension))
 
     def request_file_from_server(self, file_hash, file_type):
         file_request = json.dumps(CommandFileRequest(file_hash, file_type, self.get_free_port()), cls=CommandEncoder)

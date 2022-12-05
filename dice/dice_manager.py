@@ -14,8 +14,8 @@ class DiceManager(QWidget):
     def __init__(self, basePath):
         super().__init__()
         self.base_path = Path(basePath)
-        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures"))
-        self.dice_config_file = Path.joinpath(self.base_path, "dice.json")
+        self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures2"))
+        self.dice_config_file = Path.joinpath(self.base_path, "dice2.json")
         self.dice_groups = []
         self.use_dice = []
         self.read_from_file()
@@ -67,7 +67,7 @@ class DiceManager(QWidget):
     def check_if_dice_available(self, dice_to_check):
         not_available = []
         for dice in dice_to_check:
-            if self.get_dice_for_checksum(dice) is None:
+            if self.get_dice_for_hash(dice) is None:
                 if dice not in not_available:
                     not_available.append(dice)
         if len(not_available) > 0:
@@ -81,13 +81,20 @@ class DiceManager(QWidget):
                 if dice.display_name == look_for:
                     return dice
 
-    def get_dice_for_checksum(self, look_for):
+    def get_dice_for_hash(self, look_for):
         for dice_group in self.dice_groups:
             if dice_group.dice is not None:
                 for dice in dice_group.dice:
                     if dice is not None:
                         if dice.checksum == look_for:
                             return dice
+
+    def get_path_for_hash(self, file_hash):
+        possible_dice = self.get_dice_for_hash(file_hash)
+        if possible_dice is not None:
+            return possible_dice.image_path
+        else:
+            return None
 
     def get_all_dice(self):
         not_found_dice = []

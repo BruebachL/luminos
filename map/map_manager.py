@@ -4,13 +4,17 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from map.map_info import decode_map, MapEncoder, MapInfo
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+
+from map.base_map_info import BaseMapInfo, BaseMapEncoder, decode_base_map
+from map.map_display_widget import MapDisplayWidget
+from map.overlay_map_info import OverlayMapInfo, OverlayMapEncoder
 
 
-class MapManager(object):
+class MapManager(QWidget):
 
-    def __init__(self, basePath):
-        super().__init__()
+    def __init__(self, parent, basePath):
+        super().__init__(parent)
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("maps"))
         self.map_config_file = Path.joinpath(self.base_path, "map.json")
@@ -18,10 +22,27 @@ class MapManager(object):
         self.base_maps = self.get_base_maps_from_file_paths()
         self.overlays = self.get_overlays_from_file_paths()
         self.map_infos = []
+        self.base_map_infos = []
+        self.overlay_map_infos = []
         self.active_map = 0
         self.read_from_file()
         self.detect_unknown_maps()
+        self.sort_overlays_to_base_maps()
+        print(json.dumps(self.overlay_map_infos, cls=OverlayMapEncoder))
+        print(json.dumps(self.base_map_infos, cls=BaseMapEncoder))
         # self.determine_active_map/setup_map()
+        self.image_widget = MapDisplayWidget(self.get_active_map())
+        self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.image_widget)
+        self.setLayout(self.layout)
+        self.repaint()
+
+    def update_layout(self):
+        self.image_widget = MapDisplayWidget(self.get_active_map())
+        self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.image_widget)
+        self.setLayout(self.layout)
+        self.repaint()
 
     def is_base_map(self, file_hash):
         return "base_map" in self.file_hash_map[file_hash]
@@ -42,7 +63,7 @@ class MapManager(object):
 
 
     def get_active_map(self):
-        return self.file_hash_map[self.map_infos[self.active_map].file_hash]
+        return self.base_map_infos[self.active_map]
 
     def get_paths_for_overlays(self):
         paths = []
@@ -55,6 +76,19 @@ class MapManager(object):
             return self.file_hash_map[file_hash]
         return None
 
+    def get_map_info_for_hash(self, file_hash):
+        for base_map_info in self.base_map_infos:
+            if base_map_info.file_hash == file_hash:
+                return base_map_info
+            else:
+                for overlay_info in base_map_info.overlays:
+                    if overlay_info.file_hash == file_hash:
+                        return overlay_info
+        for overlay_info in self.overlay_map_infos:
+            if overlay_info.file_hash == file_hash:
+                return file_hash
+        return None
+
     def populate_file_hash_map(self):
         file_hash_map = {}
         onlyfiles = [join(self.base_resource_path, f) for f in listdir(self.base_resource_path) if isfile(join(self.base_resource_path, f))]
@@ -65,19 +99,38 @@ class MapManager(object):
 
     def detect_unknown_maps(self):
         for file_hash in self.file_hash_map.keys():
-            if file_hash not in (map_info.file_hash for map_info in self.map_infos):
-                self.map_infos.append(MapInfo(self.file_hash_map[file_hash], file_hash))
+            if file_hash not in (map_info.file_hash for map_info in self.base_map_infos) and file_hash not in (map_info.file_hash for map_info in self.overlay_map_infos):
+                if self.is_base_map(file_hash):
+                    self.base_map_infos.append(BaseMapInfo(self.file_hash_map[file_hash], file_hash, []))
+                else:
+                    self.overlay_map_infos.append(OverlayMapInfo(self.file_hash_map[file_hash], file_hash, False))
+
+    def sort_overlays_to_base_maps(self):
+        for base_map in self.base_map_infos:
+            for overlay in self.overlay_map_infos:
+                if base_map.name.split('base_map')[0] in overlay.name and overlay.name not in (overlay_info.name for overlay_info in base_map.overlays):
+                    base_map.overlays.append(overlay)
+
+
+    def reveal_map_overlay(self, file_hash):
+        for base_map_info in self.base_map_infos:
+            for overlay_info in base_map_info.overlays:
+                if overlay_info.file_hash == file_hash:
+                    overlay_info.revealed = True
 
 
     def read_from_file(self):
         file = open(self.map_config_file, "r")
         lines = file.readlines()
         for line in lines:
-            self.map_infos.append(json.loads(line, object_hook=decode_map))
+            self.base_map_infos.append(json.loads(line, object_hook=decode_base_map))
 
     def save_to_file(self):
         file = open(self.map_config_file, "w")
-        for map_info in self.map_infos:
+        for map_info in self.base_map_infos:
             if map_info is not None:
-                file.write(json.dumps(map_info, cls=MapEncoder) + "\n")
+                file.write(json.dumps(map_info, cls=BaseMapEncoder) + "\n")
         file.close()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)

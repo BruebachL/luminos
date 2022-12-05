@@ -4,8 +4,8 @@ from utils.string_utils import fix_up_json_string
 
 
 class CommandFileRequest:
-    def __init__(self, name, file_type, port):
-        self.name = name
+    def __init__(self, file_hash, file_type, port):
+        self.file_hash = file_hash
         self.file_type = file_type
         self.port = port
 
@@ -18,6 +18,12 @@ class CommandListenUp:
 
 
 class CommandRevealClue:
+    def __init__(self, file_hash, revealed):
+        self.file_hash = file_hash
+        self.revealed = revealed
+
+
+class CommandRevealMapOverlay:
     def __init__(self, file_hash, revealed):
         self.file_hash = file_hash
         self.revealed = revealed
@@ -74,11 +80,15 @@ class InfoClueFile:
         self.display_name = display_name
         self.revealed = revealed
 
+class InfoMapFile:
+    def __init__(self, base_map, revealed):
+        self.base_map = base_map
+        self.revealed = revealed
 
 def decode_command(dct):
     match(dct['class']):
-        case "command_dice_request":
-            return CommandFileRequest(dct['name'], dct['file_type'], dct['port'])
+        case "command_file_request":
+            return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])
         case "listen_up":
             return CommandListenUp(dct['port'], dct['length'], dct['filename'])
         case "command_roll_dice":
@@ -93,6 +103,12 @@ def decode_command(dct):
             return InfoDiceFile(dct['display_name'], dct['group'])
         case "info_clue_file":
             return InfoClueFile(dct['display_name'], dct['revealed'])
+        case "info_map_file":
+            return InfoMapFile(dct['base_map', dct['revealed']])
+        case "command_reveal_clue":
+            return CommandRevealClue(dct['file_hash'], dct['revealed'])
+        case "command_reveal_map_overlay":
+            return CommandRevealMapOverlay(dct['file_hash'], dct['revealed'])
     return dct
 
 
@@ -100,7 +116,7 @@ class CommandEncoder(json.JSONEncoder):
 
     def default(self, c):
         if isinstance(c, CommandFileRequest):
-            return {"class": 'command_dice_request', "name": c.name, "file_type": c.file_type,"port": c.port}
+            return {"class": 'command_file_request', "file_hash": c.file_hash, "file_type": c.file_type,"port": c.port}
         elif isinstance(c, CommandListenUp):
             return {"class": 'listen_up', "port": c.port, "length": c.length, "filename": c.file_name}
         elif isinstance(c, CommandRollDice):
@@ -120,5 +136,11 @@ class CommandEncoder(json.JSONEncoder):
             return {"class": 'info_dice_file', "display_name": c.display_name, "group": c.group}
         elif isinstance(c, InfoClueFile):
             return {"class": 'info_clue_file', "display_name": c.display_name, "revealed": c.revealed}
+        elif isinstance(c, InfoMapFile):
+            return {"class": 'info_map_file', "base_map": c.base_map, "revealed": c.revealed}
+        elif isinstance(c, CommandRevealClue):
+            return {"class": 'command_reveal_clue', "file_hash": c.file_hash, "revealed": c.revealed}
+        elif isinstance(c, CommandRevealMapOverlay):
+            return {"class": 'command_reveal_map_overlay', "file_hash": c.file_hash, "revealed": c.revealed}
         else:
             return super().default(c)

@@ -109,9 +109,9 @@ class DiceRollWidget(QLabel):
         qp.setRenderHint(QPainter.Antialiasing)
         image = QImage()
         if self.dice_skin is None:
-            image.load(self.dice_manager.get_dice_for_checksum(self.dice_skin).image_path)
+            image.load(self.dice_manager.get_dice_for_hash(self.dice_skin).image_path)
         else:
-            image.load(self.dice_manager.get_dice_for_checksum(self.dice_skin).image_path)
+            image.load(self.dice_manager.get_dice_for_hash(self.dice_skin).image_path)
         random_rot = random.randrange(0, 360, 1)
         my_transform = QTransform(1, 0, 0, 1,image.width() / 2, image.height() / 2)
         my_transform.translate(image.width() / 2, image.height() / 2)
