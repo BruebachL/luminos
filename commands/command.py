@@ -104,7 +104,7 @@ def decode_command(dct):
         case "info_clue_file":
             return InfoClueFile(dct['display_name'], dct['revealed'])
         case "info_map_file":
-            return InfoMapFile(dct['base_map', dct['revealed']])
+            return InfoMapFile(dct['base_map'], dct['revealed'])
         case "command_reveal_clue":
             return CommandRevealClue(dct['file_hash'], dct['revealed'])
         case "command_reveal_map_overlay":

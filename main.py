@@ -110,10 +110,6 @@ class ThreadedServer(object):
         file_data = file.read()
         file_hash = hashlib.sha256(file_data).hexdigest()
         file.seek(0)
-        print(os.path.split(file_path))
-        print(os.path.split(file_path)[1])
-        print(os.path.split(file_path)[1].split('.'))
-        print('.'.join(os.path.split(file_path)[1].split('.')[:-1]))
         return file, InfoFileRequest('.'.join(os.path.split(file_path)[1].split('.')[:-1]),
                                                                        file_path.split('.')[-1], "image:dice",
                                                                        len(file_data), file_hash, None)

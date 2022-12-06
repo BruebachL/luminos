@@ -343,7 +343,7 @@ class BasicWindow(QWidget):
         data, info_response = self.request_file_from_server(clue, "image:clue")
         path = self.write_file_to_path(data, self.clue_manager.base_resource_path, info_response)
         self.clue_manager.clues.append(Clue(info_response.file_hash, path, info_response.file_info.display_name, info_response.file_info.revealed))
-        #self.clue_manager.update_layout()
+        self.clue_manager.update_layout()
         print("Received clue.")
 
     def request_dice_from_server(self, dice):
