@@ -90,10 +90,12 @@ class ThreadedServer(object):
                 file_to_return = self.clue_manager.get_path_for_hash(file_hash)
                 clue_info = self.clue_manager.get_clue_for_hash(file_hash)
                 file_info_detail = InfoClueFile(clue_info.display_name, clue_info.revealed)
+                file_info_detail.file_type = "image:clue"
             case "image:dice":
                 file_to_return = self.dice_manager.get_path_for_hash(file_hash)
                 dice_info = self.dice_manager.get_dice_for_hash(file_hash)
                 file_info_detail = InfoDiceFile(dice_info.display_name, dice_info.group)
+                file_info_detail.file_type = "image:dice"
             case "image:map":
                 file_to_return = self.map_manager.get_path_for_hash(file_hash)
                 map_info = self.map_manager.get_map_info_for_hash(file_hash)
@@ -101,6 +103,7 @@ class ThreadedServer(object):
                     file_info_detail = InfoMapFile(True, True)
                 else:
                     file_info_detail = InfoMapFile(False, map_info.revealed)
+                file_info_detail.file_type = "image:map"
         return file_to_return, file_info_detail
 
     def get_file_information(self, file_path):
@@ -111,7 +114,7 @@ class ThreadedServer(object):
         file_hash = hashlib.sha256(file_data).hexdigest()
         file.seek(0)
         return file, InfoFileRequest('.'.join(os.path.split(file_path)[1].split('.')[:-1]),
-                                                                       file_path.split('.')[-1], "image:dice",
+                                                                       file_path.split('.')[-1], None,
                                                                        len(file_data), file_hash, None)
         
     def fulfill_file_request(self, client, file_request):

@@ -30,8 +30,6 @@ class MapManager(QWidget):
         self.read_from_file()
         self.detect_unknown_maps()
         self.sort_overlays_to_base_maps()
-        print(json.dumps(self.overlay_map_infos, cls=OverlayMapEncoder))
-        print(json.dumps(self.base_map_infos, cls=BaseMapEncoder))
         # self.determine_active_map/setup_map()
         self.image_widget = MapDisplayWidget(self.get_active_map())
         self.layout = QVBoxLayout(self)
