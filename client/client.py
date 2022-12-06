@@ -19,7 +19,6 @@ from character.character import CharacterEncoder, decode_character
 from character.inventory_display_layout import InventoryDisplayLayout
 from character.inventory_edit_layout import InventoryEditLayout
 from clues.clue import Clue
-from clues.clue_display_layout import ClueDisplayLayout
 from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay
@@ -33,9 +32,10 @@ from utils.string_utils import fix_up_json_string
 
 
 class BasicWindow(QWidget):
-    def __init__(self, server_ip, server_port, player_name):
+    def __init__(self, server_ip, server_port, player_name, admin_client):
         super().__init__()
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
+        self.admin_client = admin_client
 
         # Splash screen setup
         self.splash_screen = QSplashScreen(QPixmap(str(Path("resources").joinpath(Path("splash_screen.png")))))
@@ -87,15 +87,17 @@ class BasicWindow(QWidget):
         self.setWindowTitle('DnD Tool')
         self.grid_layout = None
         self.base_layout = QTabWidget()
-        self.dice_manager = DiceManager(self.base_path)
+        self.dice_manager = DiceManager(self, self.base_path)
         self.map_manager = MapManager(self, self.base_path)
-        self.clue_manager = ClueManager(self.base_path)
+        self.clue_manager = ClueManager(self, self.base_path)
         self.base_layout.addTab(self.character_tab_ui(), "Character")
-        self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
+        if self.admin_client:
+            self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
         self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
-        self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
+        if self.admin_client:
+            self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
         self.base_layout.addTab(self.map_manager, "Map")
-        self.base_layout.addTab(self.clue_tab_ui(), "Clues")
+        self.base_layout.addTab(self.clue_manager, "Clues")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
@@ -145,9 +147,6 @@ class BasicWindow(QWidget):
 
     def character_inventory_edit_tab_ui(self):
         return InventoryEditLayout(self.character)
-
-    def clue_tab_ui(self):
-        return ClueDisplayLayout(self.clue_manager)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -235,8 +234,13 @@ class BasicWindow(QWidget):
             partial_data = server.recv(left_to_receive)
             print(partial_data)
             if partial_data is not [] or partial_data is not None:
-                while partial_data[0] != 123:
-                    partial_data = partial_data[1:]
+                try:
+                    while partial_data[0] != 123:
+                        partial_data = partial_data[1:]
+                except IndexError as e:
+                    print(partial_data)
+                    print(len(partial_data))
+                    print(type(partial_data))
             received = str(partial_data, "UTF-8")
             data = data + received
             left_to_receive = left_to_receive - (len(received))
@@ -284,7 +288,7 @@ class BasicWindow(QWidget):
                 if map_overlay_to_reveal is None:
                     self.request_map_from_server(response.file_hash)
                 else:
-                    map_overlay_to_reveal.revealed = True
+                    map_overlay_to_reveal.revealed = response.revealed
                 self.map_manager.update_layout()
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
@@ -429,9 +433,10 @@ if __name__ == '__main__':
         parser.add_argument('--ip', help='Server IP (Default: localhost)')
         parser.add_argument('--port', help='Server port (Default: 1337)', default=1337, type=int, action="store")
         parser.add_argument('--name', help='Character name', default="Dummy", type=str, action="store")
+        parser.add_argument('--admin', help='Launch as admin client', action="store_true")
         args = parser.parse_args()
         app = QApplication(sys.argv)
-        window = BasicWindow(args.ip, args.port, args.name)
+        window = BasicWindow(args.ip, args.port, args.name, args.admin)
         sys.exit(app.exec_())
     finally:
         print("saving to file")

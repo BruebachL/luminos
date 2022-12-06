@@ -4,8 +4,9 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QComboBox
 
+from commands.command import CommandRevealMapOverlay, CommandEncoder
 from map.base_map_info import BaseMapInfo, BaseMapEncoder, decode_base_map
 from map.map_display_widget import MapDisplayWidget
 from map.overlay_map_info import OverlayMapInfo, OverlayMapEncoder
@@ -15,6 +16,7 @@ class MapManager(QWidget):
 
     def __init__(self, parent, basePath):
         super().__init__(parent)
+        self.parent = parent
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("maps"))
         self.map_config_file = Path.joinpath(self.base_path, "map.json")
@@ -34,13 +36,48 @@ class MapManager(QWidget):
         self.image_widget = MapDisplayWidget(self.get_active_map())
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self.image_widget)
+        self.combo_box = None
+        self.add_admin_panel()
         self.setLayout(self.layout)
         self.repaint()
 
+    def add_admin_panel(self):
+        if self.parent is not None:
+            if self.parent.admin_client:
+                button = QPushButton()
+                button.pressed.connect(self.toggle_map_overlay)
+                self.layout.addWidget(button)
+                active_base_map = self.get_active_map()
+                self.combo_box = QComboBox()
+                for overlay in active_base_map.overlays:
+                    self.combo_box.addItem(overlay.name)
+                self.combo_box.setCurrentText(active_base_map.overlays[0].name)
+                #combo_box.currentTextChanged.connect(self.update_combo)
+                #combo_box.currentIndexChanged.connect(self.update_combo)
+                #combo_box.editTextChanged.connect(self.update_combo)
+                self.layout.addWidget(self.combo_box)
+
+    def toggle_map_overlay(self):
+        print(self.combo_box.currentText())
+        for i in range(len(self.get_active_map().overlays)):
+            if self.get_active_map().overlays[i].name == self.combo_box.currentText():
+                if self.get_active_map().overlays[i].revealed:
+                    self.get_active_map().overlays[i].revealed = False
+                else:
+                    self.get_active_map().overlays[i].revealed = True
+                self.parent.output_buffer.append(bytes(
+                    json.dumps(CommandRevealMapOverlay(self.get_active_map().overlays[i].file_hash,
+                                                       self.get_active_map().overlays[i].revealed),
+                               cls=CommandEncoder), "UTF-8"))
+        self.update_layout()
+
     def update_layout(self):
+        self.image_widget.parent = None
         self.image_widget = MapDisplayWidget(self.get_active_map())
+        QWidget().setLayout(self.layout)
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self.image_widget)
+        self.add_admin_panel()
         self.setLayout(self.layout)
         self.repaint()
 

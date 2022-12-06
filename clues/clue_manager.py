@@ -1,16 +1,21 @@
 import hashlib
 import json
+from math import ceil, sqrt
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton
+
+from character.image_widget import ImageWidget
 from clues.clue import Clue, ClueEncoder, decode_clue
 
 
-class ClueManager(object):
+class ClueManager(QWidget):
 
-    def __init__(self, basePath):
-        super().__init__()
+    def __init__(self, parent, basePath):
+        super().__init__(parent)
+        self.parent = parent
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("clues"))
         self.clue_config_file = Path.joinpath(self.base_path, "clues.json")
@@ -19,6 +24,28 @@ class ClueManager(object):
         self.clues = []
         self.read_from_file()
         self.detect_unknown_clues()
+        self.grid_layout = QGridLayout()
+        self.add_revealed_clues()
+        self.setLayout(self.grid_layout)
+
+    def add_revealed_clues(self):
+        revealed_clues = self.get_revealed_clues()
+        max_columns_per_row = ceil(sqrt(len(revealed_clues)))
+        current_row = 0
+        current_column = 0
+        for clue in revealed_clues:
+            self.grid_layout.addWidget(ImageWidget(clue.file_path), current_row, current_column)
+            current_column = current_column + 1
+            if current_column == max_columns_per_row:
+                current_column = 0
+                current_row = current_row + 1
+        if self.parent is not None:
+            if self.parent.admin_client:
+                if current_column != 0:
+                    current_column = 0
+                    current_row = current_row + 1
+                self.grid_layout.addWidget(QPushButton(), current_row, current_column, -1, -1)
+                print("Is admin")
 
     def get_revealed_clues(self):
         revealed_clues = []
