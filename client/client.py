@@ -21,7 +21,7 @@ from character.inventory_edit_layout import InventoryEditLayout
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
-    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay
+    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
@@ -80,31 +80,22 @@ class BasicWindow(QWidget):
         self.update_timer.timeout.connect(self.check_for_updates_and_send_output_buffer)
         self.update_timer.start(1000)
         self.file_port = 1339
+        
+        self.previous_dice_rolls = []
 
         # Layout setup
         self.splash_screen.showMessage("Initializing UI...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
         self.setWindowTitle('DnD Tool')
-        self.grid_layout = None
         self.base_layout = QTabWidget()
-        self.dice_manager = DiceManager(self, self.base_path)
-        self.map_manager = MapManager(self, self.base_path)
-        self.clue_manager = ClueManager(self, self.base_path)
-        self.base_layout.addTab(self.character_tab_ui(), "Character")
-        if self.admin_client:
-            self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
-        self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
-        if self.admin_client:
-            self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
-        self.base_layout.addTab(self.map_manager, "Map")
-        self.base_layout.addTab(self.clue_manager, "Clues")
-        self.base_layout.addTab(self.dice_manager, "Dice Manager")
+        self.dice_manager = None
+        self.map_manager = None
+        self.clue_manager = None
+        self.dice_roll_manager = None
         self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
 
-        # Create the tab widget with two tabs
-        self.layout.addWidget(self.dice_roll_manager_tab_ui())
-        self.layout.addWidget(self.base_layout)
+        # Actually build the layout
+        self.build_layout()
 
         # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -128,12 +119,40 @@ class BasicWindow(QWidget):
     #                                                UI Housekeeping                                                   #
     ####################################################################################################################
 
-    def dice_roll_manager_tab_ui(self):
-        """Create the General page UI."""
-        generalTab = QWidget()
-        self.grid_layout = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
-        generalTab.setLayout(self.grid_layout)
-        return generalTab
+    def build_layout(self):
+        QWidget().setLayout(self.layout)
+        self.layout = QHBoxLayout()
+        self.base_layout = QTabWidget()
+
+        # Create the managers
+        self.dice_manager = DiceManager(self, self.base_path)
+        self.map_manager = MapManager(self, self.base_path)
+        self.clue_manager = ClueManager(self, self.base_path)
+        self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
+        
+        # for dice_roll in self.previous_dice_rolls:
+        #     self.dice_roll_manager.dice_roll_viewer.add_dice_roll(dice_roll.roll_value, dice_roll.dice_skins)
+        #     self.dice_roll_manager.text_history_viewer.insertItem(0, str(dice_roll))
+
+        # Create the main function tabs
+        self.base_layout.addTab(self.character_tab_ui(), "Character")
+        if self.admin_client:
+            self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
+        self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
+        if self.admin_client:
+            self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
+        self.base_layout.addTab(self.map_manager, "Map")
+        self.base_layout.addTab(self.clue_manager, "Clues")
+        self.base_layout.addTab(self.dice_manager, "Dice Manager")
+
+        # Create the main UI screen with two split layouts
+        self.layout.addWidget(self.dice_roll_manager)
+        self.layout.addWidget(self.base_layout)
+
+
+        self.setLayout(self.layout)
+        self.repaint()
+
 
     def character_tab_ui(self):
         """Create the Character page UI."""
@@ -274,8 +293,9 @@ class BasicWindow(QWidget):
                     self.client_sequence_log.debug("Couldn't find dice " + str(dice_not_available))
                     for dice in dice_not_available:
                         self.request_dice_from_server(dice)
-                self.grid_layout.label.add_dice_roll(response.roll_value, response.dice_skins)
-                self.grid_layout.listview.insertItem(0, str(response))
+                self.dice_roll_manager.dice_roll_viewer.add_dice_roll(response.roll_value, response.dice_skins)
+                self.dice_roll_manager.text_history_viewer.insertItem(0, str(response))
+                #self.build_layout()
             case CommandRevealClue():
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
                 if clue_to_reveal is None:
@@ -378,6 +398,10 @@ class BasicWindow(QWidget):
         self.announce_length_and_send(self.connected_socket, bytes(file_request, "UTF-8"))
         info_response = self.listen_until_all_data_received(self.connected_socket)
         info_response = self.decode_server_command(info_response)
+        while not isinstance(info_response, InfoFileRequest):
+            self.process_server_response(info_response)
+            info_response = self.listen_until_all_data_received(self.connected_socket)
+            info_response = self.decode_server_command(info_response)
         while True:
             read_sockets, write_sockets, error_sockets = select.select(
                 [self.connected_socket], [self.connected_socket], [self.connected_socket])
@@ -387,6 +411,7 @@ class BasicWindow(QWidget):
                 self.client_sequence_log.debug("This should be a listen up...")
                 if isinstance(listen_up_response, CommandListenUp):
                     self.client_sequence_log.debug("Received Listen Up.")
+                    # Make sure this is correct info response
                     file_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     file_host = self.server_ip
                     not_connected = True

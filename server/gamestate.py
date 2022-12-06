@@ -23,7 +23,6 @@ class GameState:
             else:
                 if rolls[i] >= int(roll.rolled_against[i]):
                     diffs = diffs + (rolls[i] - int(roll.rolled_against[i]))
-
         roll = json.dumps(InfoRollDice(roll.character, rolls, roll.sides, roll.rolled_for, roll.rolled_against, (True if diffs < roll.equalizer else False), roll.dice_skins), cls=CommandEncoder)
         self.last_dice_rolls.append(roll)
         self.lock.release()

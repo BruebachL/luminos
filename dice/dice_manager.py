@@ -145,10 +145,10 @@ class DiceManager(QWidget):
                         self.dice_groups.remove(dice_group)
         need_new_group = True
         for dice_group in self.dice_groups:
-            if dice_group.name == dice_widget.line_edit_value.text():
+            if dice_group.name == dice_widget.line_edit.text():
                 dice_group.dice.append(dice_widget.dice)
                 dice_widget.dice.group = dice_group.name
                 need_new_group = False
         if need_new_group:
-            dice_widget.dice.group = dice_widget.line_edit_value.text()
-            self.dice_groups.append(DiceGroup(dice_widget.line_edit_value.text(), [dice_widget.dice], dice_widget.dice.image_path))
+            dice_widget.dice.group = dice_widget.line_edit.text()
+            self.dice_groups.append(DiceGroup(dice_widget.line_edit.text(), [dice_widget.dice], dice_widget.dice.image_path))

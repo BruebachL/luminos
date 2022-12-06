@@ -90,12 +90,10 @@ class ThreadedServer(object):
                 file_to_return = self.clue_manager.get_path_for_hash(file_hash)
                 clue_info = self.clue_manager.get_clue_for_hash(file_hash)
                 file_info_detail = InfoClueFile(clue_info.display_name, clue_info.revealed)
-                file_info_detail.file_type = "image:clue"
             case "image:dice":
                 file_to_return = self.dice_manager.get_path_for_hash(file_hash)
                 dice_info = self.dice_manager.get_dice_for_hash(file_hash)
                 file_info_detail = InfoDiceFile(dice_info.display_name, dice_info.group)
-                file_info_detail.file_type = "image:dice"
             case "image:map":
                 file_to_return = self.map_manager.get_path_for_hash(file_hash)
                 map_info = self.map_manager.get_map_info_for_hash(file_hash)
@@ -103,7 +101,6 @@ class ThreadedServer(object):
                     file_info_detail = InfoMapFile(True, True)
                 else:
                     file_info_detail = InfoMapFile(False, map_info.revealed)
-                file_info_detail.file_type = "image:map"
         return file_to_return, file_info_detail
 
     def get_file_information(self, file_path):
@@ -128,6 +125,7 @@ class ThreadedServer(object):
         # Gather file information
         file, file_info = self.get_file_information(file_to_return)
         file_info.file_info = file_info_detail
+        file_info.file_type = file_request.file_type
         print(fix_up_json_string(json.dumps(file_info, cls=CommandEncoder)))
         # Send it
         self.announce_length_and_send(client,
