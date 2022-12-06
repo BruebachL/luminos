@@ -16,7 +16,7 @@ class DiceRollButtonLayout(QGridLayout):
         self.dice_to_use = []
         if len(self.dice_manager.use_dice) > 0:
             self.dice_to_use.append(
-                self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].display_name)
+                self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].checksum)
 
     def add_buttons(self):
         roll_button = QPushButton()
