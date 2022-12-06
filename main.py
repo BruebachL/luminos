@@ -11,7 +11,8 @@ from PyQt5.QtWidgets import QApplication
 
 from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
-    InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay
+    InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
+    CommandRevealClue
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -75,6 +76,8 @@ class ThreadedServer(object):
                 # We don't broadcast this to all clients, so we return none here
                 return None
             case CommandRevealMapOverlay():
+                return json.dumps(cmd, cls=CommandEncoder)
+            case CommandRevealClue():
                 return json.dumps(cmd, cls=CommandEncoder)
             case _:
                 print("Unknown command:")
