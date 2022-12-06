@@ -358,7 +358,7 @@ class BasicWindow(QWidget):
         data, info_response = self.request_file_from_server(map_hash, "image:map")
         print(str(info_response.name) + "." + str(info_response.extension))
         path = self.write_file_to_path(data, self.map_manager.base_resource_path, info_response)
-        if info_response.base_map:
+        if info_response.file_info.base_map:
             self.map_manager.base_maps.append(BaseMapInfo(path, info_response.file_hash, []))
             print("Received Base Map.")
         else:
