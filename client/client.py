@@ -282,7 +282,7 @@ class BasicWindow(QWidget):
                     self.request_clue_from_server(response.file_hash)
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
                 clue_to_reveal.revealed = response.revealed
-                #self.clue_manager.update_layout()
+                self.clue_manager.update_layout()
             case CommandRevealMapOverlay():
                 map_overlay_to_reveal = self.map_manager.get_map_info_for_hash(response.file_hash)
                 if map_overlay_to_reveal is None:
