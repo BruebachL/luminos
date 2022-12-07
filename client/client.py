@@ -13,15 +13,15 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
-from character.character_edit_widget import CharacterEditWidget
+from audio.audio_info import AudioInfo
+from audio.audio_manager import AudioManager
 from character.character_manager import CharacterManager
-from character.character import CharacterEncoder, decode_character
-from character.inventory_display_layout import InventoryDisplayLayout
-from character.inventory_edit_layout import InventoryEditLayout
+from character.character import CharacterEncoder
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
-    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest
+    InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
+    CommandPlayAudio
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -33,7 +33,7 @@ from utils.string_utils import fix_up_json_string
 
 
 class BasicWindow(QWidget):
-    def __init__(self, server_ip, server_port, player_name, admin_client):
+    def __init__(self, server_ip, server_port, admin_client):
         super().__init__()
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
         self.admin_client = admin_client
@@ -70,14 +70,13 @@ class BasicWindow(QWidget):
         self.update_timer.timeout.connect(self.check_for_updates_and_send_output_buffer)
         self.update_timer.start(1000)
         self.file_port = 1339
-        
-        self.previous_dice_rolls = []
 
         # Layout setup
         self.splash_screen.showMessage("Initializing UI...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
         self.setWindowTitle('DnD Tool')
         self.base_layout = QTabWidget()
+        self.audio_manager = None
         self.character_manager = None
         self.dice_manager = None
         self.map_manager = None
@@ -121,11 +120,13 @@ class BasicWindow(QWidget):
         self.map_manager = MapManager(self, self.base_path)
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
+        self.audio_manager = AudioManager(self, self.base_path)
 
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
         self.base_layout.addTab(self.map_manager, "Map")
         self.base_layout.addTab(self.clue_manager, "Clues")
+        self.base_layout.addTab(self.audio_manager, "Audio")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
 
         # Create the main UI screen with two split layouts
@@ -280,6 +281,11 @@ class BasicWindow(QWidget):
                 else:
                     map_overlay_to_reveal.revealed = response.revealed
                 self.map_manager.update_layout()
+            case CommandPlayAudio():
+                audio_to_play = self.audio_manager.get_audio_info_for_hash(response.file_hash)
+                if audio_to_play is None:
+                    self.request_audio_from_server(response.file_hash)
+                self.audio_manager.play_audio(response.file_hash)
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
                 self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
@@ -328,6 +334,17 @@ class BasicWindow(QWidget):
         file_socket.settimeout(60)
         file_client.sendfile(file)
         file_socket.close()
+
+    def request_audio_from_server(self, clue):
+        data, info_response = self.request_file_from_server(clue, "audio:stinger")
+        path = self.write_file_to_path(data, self.audio_manager.base_resource_path, info_response)
+        self.audio_manager.audio_clips.append(AudioInfo(info_response.file_hash, path, info_response.file_info.display_name))
+        self.audio_manager.file_hash_map = self.audio_manager.populate_file_hash_map()
+        self.audio_manager.detect_unknown_audios()
+        print(self.audio_manager.file_hash_map)
+        print(self.audio_manager.audio_clips)
+        self.audio_manager.update_layout()
+        print("Received audio.")
 
     def request_clue_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "image:clue")
@@ -410,7 +427,13 @@ class BasicWindow(QWidget):
                         "Waiting for file request but received another command in the meantime.")
                     self.process_server_response(listen_up_response)
 
-
+    def save_managers(self):
+        self.audio_manager.save_to_file()
+        self.dice_manager.save_to_file()
+        self.character_manager.save_to_file()
+        self.map_manager.save_to_file()
+        self.clue_manager.save_to_file()
+        # self.dice_roll_manager.save_to_file()
 
 
 if __name__ == '__main__':
@@ -419,16 +442,12 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Homebrew DnD Tool.')
         parser.add_argument('--ip', help='Server IP (Default: localhost)')
         parser.add_argument('--port', help='Server port (Default: 1337)', default=1337, type=int, action="store")
-        parser.add_argument('--name', help='Character name', default="Dummy", type=str, action="store")
         parser.add_argument('--admin', help='Launch as admin client', action="store_true")
         args = parser.parse_args()
         app = QApplication(sys.argv)
-        window = BasicWindow(args.ip, args.port, args.name, args.admin)
+        window = BasicWindow(args.ip, args.port, args.admin)
         sys.exit(app.exec_())
     finally:
         print("saving to file")
-        window.save_to_file(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, ensure_ascii=False)))
-        print(fix_up_json_string(json.dumps(window.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))
-        window.dice_manager.save_to_file()
-        window.map_manager.save_to_file()
-        window.clue_manager.save_to_file()
+        window.save_managers()
+        print(fix_up_json_string(json.dumps(window.character_manager.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))

@@ -44,7 +44,7 @@ class ButtonLabelEditWidget:
             talent_names.append(talent.name)
             talent_values.append(talent.value)
         command = CommandRollDice(self.character.name, len(talent_values), 20, self.talent.name, talent_values, int(self.line_edit.text()), self.dice_to_use)
-        self.output_buffer.append(bytes(json.dumps(command, cls=CommandEncoder), "UTF-8"))
+        self.parent.parent.parent.output_buffer.append(bytes(json.dumps(command, cls=CommandEncoder), "UTF-8"))
 
     def text_changed(self):
         self.talent.value = self.line_edit.text()

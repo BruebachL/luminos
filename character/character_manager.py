@@ -3,12 +3,13 @@ import os
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget
 
-from character.character import decode_character
+from character.character import decode_character, CharacterEncoder
 from character.character_edit_widget import CharacterEditWidget
 from character.character_info_layout import CharacterInfoLayout
 from character.inventory_display_layout import InventoryDisplayLayout
 from character.inventory_edit_layout import InventoryEditLayout
 from character.talent_display_layout import TalentDisplayLayout
+from utils.string_utils import fix_up_json_string
 
 
 class CharacterManager(QWidget):
@@ -74,10 +75,10 @@ class CharacterManager(QWidget):
         return json.loads(str(character_json), object_hook=decode_character)
 
 
-    def save_to_file(self, character_to_write):
+    def save_to_file(self):
         try:
             with open(self.character_sheet_path, "w") as file:
-                file.write(character_to_write)
+                file.write(fix_up_json_string(json.dumps(self.character, cls=CharacterEncoder, separators=(',', ':'), indent=4, ensure_ascii=False)))
                 file.close()
         except Exception as e:
             import traceback

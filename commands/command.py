@@ -29,6 +29,12 @@ class CommandRevealMapOverlay:
         self.revealed = revealed
 
 
+class CommandPlayAudio:
+    def __init__(self, file_hash, duration):
+        self.file_hash = file_hash
+        self.duration = duration
+
+
 class CommandRollDice:
     def __init__(self, character, amount, sides, rolled_for, rolled_against, equalizer, dice_skins):
         self.character = character
@@ -69,11 +75,14 @@ class InfoFileRequest:
         self.file_info = file_info
 
 
+class InfoAudioFile:
+    def __init__(self, display_name):
+        self.display_name = display_name
+
 class InfoDiceFile:
     def __init__(self, display_name, group):
         self.display_name = display_name
         self.group = group
-
 
 class InfoClueFile:
     def __init__(self, display_name, revealed):
@@ -99,6 +108,8 @@ def decode_command(dct):
             return InfoDiceRequestDecline(dct['name'])
         case "info_file_request":
             return InfoFileRequest(dct['name'], dct['extension'], dct['file_type'], dct['file_length'], dct['file_hash'], dct['file_info'])
+        case "info_audio_file":
+            return InfoAudioFile(dct['display_name'])
         case "info_dice_file":
             return InfoDiceFile(dct['display_name'], dct['group'])
         case "info_clue_file":
@@ -109,6 +120,8 @@ def decode_command(dct):
             return CommandRevealClue(dct['file_hash'], dct['revealed'])
         case "command_reveal_map_overlay":
             return CommandRevealMapOverlay(dct['file_hash'], dct['revealed'])
+        case "command_play_audio":
+            return CommandPlayAudio(dct['file_hash'], dct['duration'])
     return dct
 
 
@@ -132,6 +145,8 @@ class CommandEncoder(json.JSONEncoder):
         elif isinstance(c, InfoFileRequest):
             return {"class": 'info_file_request', "name": c.name, "extension": c.extension, "file_type": c.file_type,
                     "file_length": c.file_length, "file_hash": c.file_hash, "file_info": fix_up_json_string(json.dumps(c.file_info, cls=CommandEncoder))}
+        elif isinstance(c, InfoAudioFile):
+            return {"class": 'info_audio_file', "display_name": c.display_name}
         elif isinstance(c, InfoDiceFile):
             return {"class": 'info_dice_file', "display_name": c.display_name, "group": c.group}
         elif isinstance(c, InfoClueFile):
@@ -142,5 +157,7 @@ class CommandEncoder(json.JSONEncoder):
             return {"class": 'command_reveal_clue', "file_hash": c.file_hash, "revealed": c.revealed}
         elif isinstance(c, CommandRevealMapOverlay):
             return {"class": 'command_reveal_map_overlay', "file_hash": c.file_hash, "revealed": c.revealed}
+        elif isinstance(c, CommandPlayAudio):
+            return {"class": 'command_play_audio', "file_hash": c.file_hash, "duration": c.duration}
         else:
             return super().default(c)

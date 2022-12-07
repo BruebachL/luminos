@@ -9,10 +9,11 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication
 
+from audio.audio_manager import AudioManager
 from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
-    CommandRevealClue
+    CommandRevealClue, InfoAudioFile, CommandPlayAudio
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -61,6 +62,7 @@ class ThreadedServer(object):
         self.clue_manager = ClueManager(None, base_path)
         self.dice_manager = DiceManager(None, base_path)
         self.map_manager = MapManager(None, base_path)
+        self.audio_manager = AudioManager(None, base_path)
         self.connected_clients = []
 
     #server_sequence_log.debug("Client (" + client.getpeername()[0] + "")
@@ -79,6 +81,8 @@ class ThreadedServer(object):
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandRevealClue():
                 return json.dumps(cmd, cls=CommandEncoder)
+            case CommandPlayAudio():
+                return json.dumps(cmd, cls=CommandEncoder)
             case _:
                 print("Unknown command:")
                 print(cmd)
@@ -86,6 +90,10 @@ class ThreadedServer(object):
     def get_requested_file_from_managers(self, file_hash, file_type):
         file_to_return, file_info_detail = None, None
         match file_type:
+            case "audio:stinger":
+                file_to_return = self.audio_manager.get_path_for_hash(file_hash)
+                audio_info = self.audio_manager.get_audio_info_for_hash(file_hash)
+                file_info_detail = InfoAudioFile(audio_info.display_name)
             case "image:clue":
                 file_to_return = self.clue_manager.get_path_for_hash(file_hash)
                 clue_info = self.clue_manager.get_clue_for_hash(file_hash)
