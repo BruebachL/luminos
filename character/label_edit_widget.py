@@ -8,9 +8,8 @@ from commands.command import CommandRollDice, CommandEncoder
 
 class ButtonLabelEditWidget:
 
-    def __init__(self, label, output_buffer, dice_manager, character, initial_value=None, talent=None, check_against=None):
-        self.output_buffer = output_buffer
-        self.dice_manager = dice_manager
+    def __init__(self, parent, label, character, initial_value=None, talent=None, check_against=None):
+        self.parent = parent
         self.character = character
         self.label = label
         self.talent = talent
@@ -18,8 +17,8 @@ class ButtonLabelEditWidget:
         self.check_against = check_against
         self.dice_to_use = []
         for i in range(3):
-            if len(self.dice_manager.use_dice) > 0:
-                self.dice_to_use.append(self.dice_manager.use_dice[random.randrange(len(self.dice_manager.use_dice))].checksum)
+            if len(self.parent.parent.parent.dice_manager.use_dice) > 0:
+                self.dice_to_use.append(self.parent.parent.parent.dice_manager.use_dice[random.randrange(len(self.parent.parent.parent.dice_manager.use_dice))].checksum)
         if initial_value is None:
             initial_value = ""
         check_against_string = ""

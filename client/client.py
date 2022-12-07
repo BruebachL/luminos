@@ -14,7 +14,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
 from character.character_edit_widget import CharacterEditWidget
-from character.character_widget import CharacterDisplayWidget
+from character.character_manager import CharacterManager
 from character.character import CharacterEncoder, decode_character
 from character.inventory_display_layout import InventoryDisplayLayout
 from character.inventory_edit_layout import InventoryEditLayout
@@ -22,6 +22,7 @@ from clues.clue import Clue
 from clues.clue_manager import ClueManager
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest
+from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
@@ -36,25 +37,14 @@ class BasicWindow(QWidget):
         super().__init__()
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
         self.admin_client = admin_client
+        self.config_path = Path.joinpath(self.base_path, 'config.cfg')
+        self.config = Configuration(self.config_path)
+        self.player = self.config.config['Character Name'][0]
 
         # Splash screen setup
         self.splash_screen = QSplashScreen(QPixmap(str(Path("resources").joinpath(Path("splash_screen.png")))))
         self.splash_screen.setWindowFlags(self.splash_screen.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.splash_screen.show()
-
-        # Character setup
-        self.splash_screen.showMessage("Loading character...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
-                                       QtCore.Qt.white)
-        self.player = player_name
-        self.character_sheet_path = self.base_path.joinpath("character_" + self.player + ".json")
-        if not os.path.exists(self.character_sheet_path):
-            with open(self.character_sheet_path, "w+") as file:
-                with open(self.base_path.joinpath("character.json")) as default_file:
-                    file.write(default_file.read())
-        character_to_read = open(self.character_sheet_path, "r")
-        character_json = character_to_read.read()
-        character_to_read.close()
-        self.character = json.loads(str(character_json), object_hook=decode_character)
 
         # Logging setup
         self.splash_screen.showMessage("Setting up logging...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -67,9 +57,9 @@ class BasicWindow(QWidget):
         self.splash_screen.showMessage("Connecting to server...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
         if server_ip is None:
-            server_ip = socket.gethostname()
+            server_ip = self.config.config['IP'][0]
         if server_port is None:
-            server_port = 1337
+            server_port = self.config.config['Port'][0]
         self.server_ip = server_ip
         self.server_port = server_port
         self.connected_socket = None
@@ -88,6 +78,7 @@ class BasicWindow(QWidget):
                                        QtCore.Qt.white)
         self.setWindowTitle('DnD Tool')
         self.base_layout = QTabWidget()
+        self.character_manager = None
         self.dice_manager = None
         self.map_manager = None
         self.clue_manager = None
@@ -126,21 +117,13 @@ class BasicWindow(QWidget):
 
         # Create the managers
         self.dice_manager = DiceManager(self, self.base_path)
+        self.character_manager = CharacterManager(self, self.base_path)
         self.map_manager = MapManager(self, self.base_path)
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
-        
-        # for dice_roll in self.previous_dice_rolls:
-        #     self.dice_roll_manager.dice_roll_viewer.add_dice_roll(dice_roll.roll_value, dice_roll.dice_skins)
-        #     self.dice_roll_manager.text_history_viewer.insertItem(0, str(dice_roll))
 
         # Create the main function tabs
-        self.base_layout.addTab(self.character_tab_ui(), "Character")
-        if self.admin_client:
-            self.base_layout.addTab(self.character_edit_tab_ui(), "Character Edit")
-        self.base_layout.addTab(self.character_inventory_tab_ui(), "Inventory")
-        if self.admin_client:
-            self.base_layout.addTab(self.character_inventory_edit_tab_ui(), "Inventory Edit")
+        self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
         self.base_layout.addTab(self.map_manager, "Map")
         self.base_layout.addTab(self.clue_manager, "Clues")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
@@ -153,19 +136,6 @@ class BasicWindow(QWidget):
         self.setLayout(self.layout)
         self.repaint()
 
-
-    def character_tab_ui(self):
-        """Create the Character page UI."""
-        return CharacterDisplayWidget(self.character, self.dice_manager, self.output_buffer)
-
-    def character_edit_tab_ui(self):
-        return CharacterEditWidget(self.character)
-
-    def character_inventory_tab_ui(self):
-        return InventoryDisplayLayout(self.character)
-
-    def character_inventory_edit_tab_ui(self):
-        return InventoryEditLayout(self.character)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -441,14 +411,6 @@ class BasicWindow(QWidget):
                     self.process_server_response(listen_up_response)
 
 
-    def save_to_file(self, character_to_write):
-        try:
-            with open(self.character_sheet_path, "w") as file:
-                file.write(character_to_write)
-                file.close()
-        except Exception as e:
-            import traceback
-            traceback.print_exc(e)
 
 
 if __name__ == '__main__':
