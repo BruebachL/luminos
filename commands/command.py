@@ -1,6 +1,20 @@
 import json
 
+from commands.client_info import decode_client_info, ClientInfoEncoder
 from utils.string_utils import fix_up_json_string
+
+
+class CommandUpdateClientInfo:
+    def __init__(self, client_info):
+        self.client_info = client_info
+
+    def __str__(self):
+        return json.dumps(self, cls=CommandEncoder)
+
+
+class CommandQueryConnectedClients:
+    def __init__(self, connected_client_infos):
+        self.connected_client_infos = connected_client_infos
 
 
 class CommandFileRequest:
@@ -96,6 +110,13 @@ class InfoMapFile:
 
 def decode_command(dct):
     match(dct['class']):
+        case "command_update_client_info":
+            return CommandUpdateClientInfo(json.loads(str(dct['client_info']).replace("'", '"'), object_hook=decode_client_info))
+        case "command_query_connected_clients":
+            client_infos = []
+            for connected_client_info in dct['client_infos']:
+                client_infos.append(json.loads(str(connected_client_info).replace("'", '"'), object_hook=decode_client_info))
+            return CommandQueryConnectedClients(client_infos)
         case "command_file_request":
             return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])
         case "listen_up":
@@ -128,6 +149,13 @@ def decode_command(dct):
 class CommandEncoder(json.JSONEncoder):
 
     def default(self, c):
+        if isinstance(c, CommandUpdateClientInfo):
+            return {"class": "command_update_client_info", "client_info": fix_up_json_string(json.dumps(c.client_info, cls=ClientInfoEncoder))}
+        if isinstance(c, CommandQueryConnectedClients):
+            json_infos = []
+            for client_info in c.connected_client_infos:
+                json_infos.append(fix_up_json_string(json.dumps(client_info, cls=ClientInfoEncoder)))
+            return {"class": "command_query_connected_clients", "client_infos": json_infos}
         if isinstance(c, CommandFileRequest):
             return {"class": 'command_file_request', "file_hash": c.file_hash, "file_type": c.file_type,"port": c.port}
         elif isinstance(c, CommandListenUp):

@@ -10,10 +10,11 @@ import traceback
 from PyQt5.QtWidgets import QApplication
 
 from audio.audio_manager import AudioManager
+from commands.client_info import ClientInfo
 from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
-    CommandRevealClue, InfoAudioFile, CommandPlayAudio
+    CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -63,9 +64,9 @@ class ThreadedServer(object):
         self.dice_manager = DiceManager(None, base_path)
         self.map_manager = MapManager(None, base_path)
         self.audio_manager = AudioManager(None, base_path)
-        self.connected_clients = []
+        self.connected_clients = {}
 
-    #server_sequence_log.debug("Client (" + client.getpeername()[0] + "")
+    #server_sequence_log.debug("Client (" + luminos_client.getpeername()[0] + "")
     def execute_command(self, client, game_state, command):
         cmd = json.loads(command, object_hook=decode_command)
         match cmd:
@@ -83,6 +84,17 @@ class ThreadedServer(object):
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandPlayAudio():
                 return json.dumps(cmd, cls=CommandEncoder)
+            case CommandUpdateClientInfo():
+                self.connected_clients[client] = cmd.client_info
+            case CommandQueryConnectedClients():
+                connected_clients = []
+                for connected_client in self.connected_clients.keys():
+                    connected_clients.append(self.connected_clients[connected_client])
+                connected_clients_info_response = CommandQueryConnectedClients(connected_clients)
+                self.announce_length_and_send(client,
+                                              bytes(fix_up_json_string(json.dumps(connected_clients_info_response, cls=CommandEncoder)),
+                                                    "UTF-8"))
+                return None
             case _:
                 print("Unknown command:")
                 print(cmd)
@@ -209,7 +221,7 @@ class ThreadedServer(object):
         while True:
             client, address = self.sock.accept()
             client.settimeout(60)
-            self.connected_clients.append(client)
+            self.connected_clients[client] = ClientInfo(None, None, None, "Connected")
             threading.Thread(target=self.listen_to_client, args=(client, address)).start()
 
     def send_to_clients(self, response):
@@ -282,7 +294,7 @@ class ThreadedServer(object):
                     self.send_to_clients(bytes(str(response), "UTF-8"))
             except:
                 traceback.print_exc()
-                self.connected_clients.remove(client)
+                self.connected_clients.pop(client, None)
                 client.close()
                 return False
 

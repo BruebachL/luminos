@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import random
 import select
 import socket
 import sys
@@ -17,11 +18,13 @@ from audio.audio_info import AudioInfo
 from audio.audio_manager import AudioManager
 from character.character_manager import CharacterManager
 from character.character import CharacterEncoder
+from luminos_client.admin_panel import TabbedClientView, AdminPanel
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
+from commands.client_info import ClientInfo
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
-    CommandPlayAudio
+    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -36,6 +39,7 @@ class BasicWindow(QWidget):
     def __init__(self, server_ip, server_port, admin_client):
         super().__init__()
         self.base_path = Path(os.path.dirname(Path(sys.path[0])))
+        self.client_id = random.randint(0, 1337)
         self.admin_client = admin_client
         self.config_path = Path.joinpath(self.base_path, 'config.cfg')
         self.config = Configuration(self.config_path)
@@ -65,6 +69,10 @@ class BasicWindow(QWidget):
         self.connected_socket = None
         self.attempt_reconnect_to_server()
         self.output_buffer = []
+        self.connected_clients = []
+        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandUpdateClientInfo(ClientInfo(self.client_id, self.player + "#" + str(self.client_id), "0.3", "Connected.")), cls=CommandEncoder)), "UTF-8"))
+        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandQueryConnectedClients([]),
+                                                                      cls=CommandEncoder)), "UTF-8"))
         # Connect timer to check for updates and send to server
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.check_for_updates_and_send_output_buffer)
@@ -82,6 +90,7 @@ class BasicWindow(QWidget):
         self.map_manager = None
         self.clue_manager = None
         self.dice_roll_manager = None
+        self.admin_panel = None
         self.layout = QHBoxLayout()
 
         # Actually build the layout
@@ -121,6 +130,7 @@ class BasicWindow(QWidget):
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
         self.audio_manager = AudioManager(self, self.base_path)
+        self.admin_panel = AdminPanel(self, self.connected_clients)
 
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
@@ -128,6 +138,8 @@ class BasicWindow(QWidget):
         self.base_layout.addTab(self.clue_manager, "Clues")
         self.base_layout.addTab(self.audio_manager, "Audio")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
+        if self.admin_client:
+            self.base_layout.addTab(self.admin_panel, "Admin")
 
         # Create the main UI screen with two split layouts
         self.layout.addWidget(self.dice_roll_manager)
@@ -257,6 +269,10 @@ class BasicWindow(QWidget):
 
     def process_server_response(self, response):
         match response:
+            case CommandQueryConnectedClients():
+                self.connected_clients = response.connected_client_infos
+                self.admin_panel.connected_clients = self.connected_clients
+                self.admin_panel.update_layout()
             case InfoRollDice():
                 self.client_sequence_log.debug("Processing dice roll information from server.")
                 dice_not_available = self.dice_manager.check_if_dice_available(response.dice_skins)
@@ -341,8 +357,6 @@ class BasicWindow(QWidget):
         self.audio_manager.audio_clips.append(AudioInfo(info_response.file_hash, path, info_response.file_info.display_name))
         self.audio_manager.file_hash_map = self.audio_manager.populate_file_hash_map()
         self.audio_manager.detect_unknown_audios()
-        print(self.audio_manager.file_hash_map)
-        print(self.audio_manager.audio_clips)
         self.audio_manager.update_layout()
         print("Received audio.")
 
@@ -442,7 +456,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Homebrew DnD Tool.')
         parser.add_argument('--ip', help='Server IP (Default: localhost)')
         parser.add_argument('--port', help='Server port (Default: 1337)', default=1337, type=int, action="store")
-        parser.add_argument('--admin', help='Launch as admin client', action="store_true")
+        parser.add_argument('--admin', help='Launch as admin luminos_client', action="store_true")
         args = parser.parse_args()
         app = QApplication(sys.argv)
         window = BasicWindow(args.ip, args.port, args.admin)
