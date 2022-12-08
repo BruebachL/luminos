@@ -221,7 +221,7 @@ class ThreadedServer(object):
         while True:
             client, address = self.sock.accept()
             client.settimeout(60)
-            self.connected_clients[client] = ClientInfo(None, None, None, "Connected")
+            self.connected_clients[client] = ClientInfo(None, None, None, "Connected", None)
             threading.Thread(target=self.listen_to_client, args=(client, address)).start()
 
     def send_to_clients(self, response):

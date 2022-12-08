@@ -1,10 +1,12 @@
 
-from PyQt5.QtWidgets import QLineEdit, QFormLayout, QWidget
+from PyQt5.QtWidgets import QLineEdit, QFormLayout, QWidget, QVBoxLayout
 
 
-class CharacterInfoLayout(QFormLayout):
-    def __init__(self, character):
-        super().__init__()
+class CharacterInfoLayout(QWidget):
+    def __init__(self, parent, character):
+        super().__init__(parent)
+        self.layout = QVBoxLayout()
+        self.parent = parent
         self.character = character
         self.rows = 2
         self.columns = 10
@@ -12,24 +14,24 @@ class CharacterInfoLayout(QFormLayout):
         self.add_buttons()
 
     def add_buttons(self):
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
         name_line_edit = QLineEdit()
         name_line_edit.setText(self.character.name)
-        self.addRow("Name", name_line_edit)
-        self.addRow(" ", QWidget())
-        self.addRow(" ", QWidget())
+        self.layout.addWidget(name_line_edit)
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(QWidget())
         age_line_edit = QLineEdit()
         age_line_edit.setText(str(self.character.age))
-        self.addRow("Age", age_line_edit)
+        self.layout.addWidget(age_line_edit)
         occupation_line_edit = QLineEdit()
         occupation_line_edit.setText(self.character.occupation)
-        self.addRow(" ", QWidget())
-        self.addRow("Occupation", occupation_line_edit)
+        self.layout.addWidget(QWidget())
+        self.layout.addWidget(occupation_line_edit)
 
 
 

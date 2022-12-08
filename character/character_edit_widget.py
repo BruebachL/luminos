@@ -9,8 +9,8 @@ class CharacterEditWidget(QWidget):
         super().__init__()
         encasing_layout = QVBoxLayout()
         character_base_and_info_layout = QHBoxLayout()
-        character_info_layout = CharacterInfoLayout(character)
-        character_base_and_info_layout.addLayout(character_info_layout)
+        character_info_layout = CharacterInfoLayout(self, character)
+        character_base_and_info_layout.addWidget(character_info_layout)
         talent_tabs = QTabWidget()
         for talent_group in character.talent_groups:
             if talent_group.name == "Base":

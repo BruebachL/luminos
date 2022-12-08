@@ -68,11 +68,10 @@ class BasicWindow(QWidget):
         self.server_port = server_port
         self.connected_socket = None
         self.attempt_reconnect_to_server()
+        self.client_info = ClientInfo(self.client_id, self.player + "#" + str(self.client_id), "0.3", "Connected.", None)
         self.output_buffer = []
         self.connected_clients = []
-        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandUpdateClientInfo(ClientInfo(self.client_id, self.player + "#" + str(self.client_id), "0.3", "Connected.")), cls=CommandEncoder)), "UTF-8"))
-        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandQueryConnectedClients([]),
-                                                                      cls=CommandEncoder)), "UTF-8"))
+
         # Connect timer to check for updates and send to server
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.check_for_updates_and_send_output_buffer)
@@ -95,6 +94,9 @@ class BasicWindow(QWidget):
 
         # Actually build the layout
         self.build_layout()
+        self.send_client_info()
+        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandQueryConnectedClients([]),
+                                                                      cls=CommandEncoder)), "UTF-8"))
 
         # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -102,6 +104,17 @@ class BasicWindow(QWidget):
         time.sleep(1.5)
         self.splash_screen.close()
         self.show()
+
+    def update_client_info(self):
+        self.client_info.character = self.character_manager.character
+
+
+    def send_client_info(self):
+        self.update_client_info()
+        self.output_buffer.append(
+            bytes(fix_up_json_string(json.dumps(CommandUpdateClientInfo(self.client_info), cls=CommandEncoder)),
+                  "UTF-8"))
+        print("Sending client info.")
 
     def setup_logger(self, log_name):
         if os.path.exists(log_name):
