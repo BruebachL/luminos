@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget
@@ -15,7 +16,14 @@ class DiceManager(QWidget):
         super().__init__(parent)
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("dice_pictures"))
+        if not os.path.exists(self.base_resource_path):
+            os.mkdir(self.base_resource_path)
         self.dice_config_file = Path.joinpath(self.base_path, "dice.json")
+        if not os.path.exists(self.dice_config_file):
+            try:
+                open(self.dice_config_file, 'x')
+            except FileExistsError as e:
+                pass
         self.dice_groups = []
         self.use_dice = []
         self.read_from_file()

@@ -130,7 +130,8 @@ class BasicWindow(QWidget):
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
         self.audio_manager = AudioManager(self, self.base_path)
-        self.admin_panel = AdminPanel(self, self.connected_clients)
+        if self.admin_client:
+            self.admin_panel = AdminPanel(self, self.connected_clients)
 
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
@@ -270,9 +271,10 @@ class BasicWindow(QWidget):
     def process_server_response(self, response):
         match response:
             case CommandQueryConnectedClients():
-                self.connected_clients = response.connected_client_infos
-                self.admin_panel.connected_clients = self.connected_clients
-                self.admin_panel.update_layout()
+                if self.admin_client:
+                    self.connected_clients = response.connected_client_infos
+                    self.admin_panel.connected_clients = self.connected_clients
+                    self.admin_panel.update_layout()
             case InfoRollDice():
                 self.client_sequence_log.debug("Processing dice roll information from server.")
                 dice_not_available = self.dice_manager.check_if_dice_available(response.dice_skins)

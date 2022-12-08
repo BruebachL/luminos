@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
@@ -19,7 +20,14 @@ class AudioManager(QWidget):
         self.parent = parent
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("audio"))
+        if not os.path.exists(self.base_resource_path):
+            os.mkdir(self.base_resource_path)
         self.audio_info_config_file = Path.joinpath(self.base_path, "audio.json")
+        if not os.path.exists(self.audio_info_config_file):
+            try:
+                open(self.audio_info_config_file, 'x')
+            except FileExistsError as e:
+                pass
         self.file_hash_map = self.populate_file_hash_map()
         self.player = QMediaPlayer()
 

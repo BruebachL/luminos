@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from math import ceil, sqrt
 from os import listdir
 from os.path import isfile, join
@@ -9,6 +10,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QComboBox
 
 from character.image_widget import ImageWidget
 from clues.clue import Clue, ClueEncoder, decode_clue
+from clues.clue_reveal_button import ClueRevealButton
 from commands.command import CommandRevealClue, CommandEncoder
 
 
@@ -19,13 +21,19 @@ class ClueManager(QWidget):
         self.parent = parent
         self.base_path = Path(basePath)
         self.base_resource_path = Path.joinpath(self.base_path, Path("resources")).joinpath(Path("clues"))
+        if not os.path.exists(self.base_resource_path):
+            os.mkdir(self.base_resource_path)
         self.clue_config_file = Path.joinpath(self.base_path, "clues.json")
+        if not os.path.exists(self.clue_config_file):
+            try:
+                open(self.clue_config_file, 'x')
+            except FileExistsError as e:
+                pass
         self.file_hash_map = self.populate_file_hash_map()
         self.clues = []
         self.read_from_file()
         self.detect_unknown_clues()
         self.layout = QGridLayout()
-        self.combo_box = QComboBox()
         self.add_revealed_clues()
         self.add_admin_panel()
         self.setLayout(self.layout)
@@ -33,21 +41,13 @@ class ClueManager(QWidget):
     def add_admin_panel(self):
         if self.parent is not None:
             if self.parent.admin_client:
-                button = QPushButton()
-                button.pressed.connect(self.toggle_clue_reveal)
-                self.layout.addWidget(button)
-                self.combo_box = QComboBox()
                 for clue in self.clues:
-                    self.combo_box.addItem(clue.file_path)
-                self.combo_box.setCurrentText(self.clues[0].file_path)
-                #combo_box.currentTextChanged.connect(self.update_combo)
-                #combo_box.currentIndexChanged.connect(self.update_combo)
-                #combo_box.editTextChanged.connect(self.update_combo)
-                self.layout.addWidget(self.combo_box)
+                    button = ClueRevealButton(self, clue)
+                    self.layout.addWidget(button)
 
-    def toggle_clue_reveal(self):
+    def toggle_clue_reveal(self, file_hash):
         for clue in self.clues:
-            if clue.file_path == self.combo_box.currentText():
+            if clue.file_hash == file_hash:
                 if clue.revealed:
                     clue.revealed = False
                 else:
@@ -60,7 +60,6 @@ class ClueManager(QWidget):
     def update_layout(self):
         QWidget().setLayout(self.layout)
         self.layout = QGridLayout()
-        self.combo_box = QComboBox()
         self.add_revealed_clues()
         self.add_admin_panel()
         self.setLayout(self.layout)
@@ -77,13 +76,6 @@ class ClueManager(QWidget):
             if current_column == max_columns_per_row:
                 current_column = 0
                 current_row = current_row + 1
-        if self.parent is not None:
-            if self.parent.admin_client:
-                if current_column != 0:
-                    current_column = 0
-                    current_row = current_row + 1
-                self.layout.addWidget(QPushButton(), current_row, current_column, -1, -1)
-                print("Is admin")
 
     def get_revealed_clues(self):
         revealed_clues = []
