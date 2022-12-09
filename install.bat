@@ -1,4 +1,4 @@
 pip install virtualenv
 python -m venv env
-.\env\scripts\activate
+call .\env\scripts\activate
 pip install -e .

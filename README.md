@@ -4,12 +4,9 @@
 
 ## Windows
 
-1. (First install only) Download Python 3.10 installer (https://www.python.org/downloads/release/python-3108/) [Windows installer at the bottom]
-2. (First install only) Run the setup (Ensure you've checked 'Add Python to PATH')
+1. Download Python 3.10 installer (https://www.python.org/downloads/release/python-3108/) [Windows installer at the bottom]
+2. Run the setup (Ensure you've checked 'Add Python to PATH')
 3. Open File Explorer and navigate to the luminos folder.
-4. Select the address bar at the top and type 'cmd' and press enter to open a command line prompt in the luminos folder. 
-5. (First install only) Type .\install.bat
-6. Type .\env\scripts\activate
-7. Launch the client with python client/client.py --ip <server_ip> --name <your_character_name>
-
-After the initial installation, Luminos may be launched by repeating steps 3, 4, 6, and 7.
+4. Install Luminos by clicking on install.bat
+5. Adjust the IP Address in config.cfg located in <luminos_main_folder>/config.cfg
+6. Launch the client by clicking on launch.bat

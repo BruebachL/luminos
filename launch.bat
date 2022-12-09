@@ -1,3 +1,2 @@
-.\env\scripts\activate
-pip install -e .
+call .\env\scripts\activate
 python luminos_client\client.py
