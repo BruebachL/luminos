@@ -6,6 +6,8 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import QWidget
 
+from config import Configuration
+
 
 class UpdateManager(QWidget):
 
@@ -13,6 +15,8 @@ class UpdateManager(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.base_path = base_path
+        self.config_path = Path.joinpath(Path(self.base_path), 'update.cfg')
+        self.config = Configuration(self.config_path)
         self.folders = self.get_folders()
         self.folder_file_hash_maps = {}
         self.generate_folder_file_hash_map()
@@ -94,8 +98,7 @@ class UpdateManager(QWidget):
         return file_hash_map
 
     def is_filtered(self, path):
-        filtered = [".git", "__pycache__", "venv", "env", ".idea", "egg-info", ".log", ".json", ".cfg", "resources"]
-        for filter in filtered:
+        for filter in self.config.config['Filters']:
             if filter in path:
                 return True
         return False
