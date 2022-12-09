@@ -26,12 +26,13 @@ class UpdateManager(QWidget):
             for file in self.folder_file_hash_maps[folder]:
                 if hash_to_get == file:
                     temp_join_path = self.folder_file_hash_maps[folder][file]
-                    while temp_join_path[0] == '/' or temp_join_path[0] == '\\':
-                        temp_join_path = temp_join_path[1:]
-                    temp_join_path = temp_join_path.replace(os.path.split(str(self.base_path))[1], '')
-                    while temp_join_path[0] == '/' or temp_join_path[0] == '\\':
-                        temp_join_path = temp_join_path[1:]
-                    return os.path.join(self.base_path, temp_join_path.replace(os.path.split(str(self.base_path))[1], ''))
+                    cleaned_base_name = self.base_path
+                    if cleaned_base_name.endswith('\\') or cleaned_base_name.endswith('/'):
+                        cleaned_base_name = cleaned_base_name[:-1]
+                    temp_join_path = temp_join_path.replace("/" + os.path.split(cleaned_base_name)[1] + "/", '')
+                    temp_join_path = temp_join_path.replace("\\" + os.path.split(cleaned_base_name)[1] + "\\", '')
+                    print(temp_join_path)
+                    return os.path.join(self.base_path, temp_join_path)
 
     def get_relative_folder_path_for_hash(self, hash_to_get):
         for folder in self.folder_file_hash_maps:
@@ -73,7 +74,6 @@ class UpdateManager(QWidget):
         for folder in external_hash_map:
             for file in external_hash_map[folder]:
                 all_files_external_folder[file] = external_hash_map[folder][file]
-        all_files_local_folder.pop("97d33d46249f13ace6db413d81f98a8675095a4a3a68cb0b444dab31c98f7981", None)
         missing_locally = {}
         missing_externally = {}
         for file in all_files_local_folder:
