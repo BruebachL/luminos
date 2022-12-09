@@ -25,7 +25,8 @@ from clues.clue_manager import ClueManager
 from commands.client_info import ClientInfo
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
-    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient, CommandPlayStinger
+    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient, CommandPlayStinger, \
+    CommandPlayVideo
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -36,6 +37,8 @@ from map.overlay_map_info import OverlayMapInfo
 from stingers.stinger_control_widget import StingerControlWidget
 from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
+from video.video_info import VideoInfo
+from video.video_manager import VideoManager
 
 
 class BasicWindow(QWidget):
@@ -87,6 +90,7 @@ class BasicWindow(QWidget):
         self.setWindowTitle('DnD Tool')
         self.base_layout = QTabWidget()
         self.audio_manager = None
+        self.video_manager = None
         self.character_manager = None
         self.dice_manager = None
         self.map_manager = None
@@ -149,6 +153,7 @@ class BasicWindow(QWidget):
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
         self.audio_manager = AudioManager(self, self.base_path)
+        self.video_manager = VideoManager(self, self.base_path)
         if self.admin_client:
             self.admin_panel = AdminPanel(self, self.connected_clients)
         self.update_manager = UpdateManager(self, self.base_path)
@@ -158,6 +163,7 @@ class BasicWindow(QWidget):
         self.base_layout.addTab(self.map_manager, "Map")
         self.base_layout.addTab(self.clue_manager, "Clues")
         self.base_layout.addTab(self.audio_manager, "Audio")
+        self.base_layout.addTab(self.video_manager, "Video")
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         if self.admin_client:
             self.base_layout.addTab(self.admin_panel, "Admin")
@@ -343,6 +349,11 @@ class BasicWindow(QWidget):
                 if audio_to_play is None:
                     self.request_audio_from_server(response.file_hash)
                 self.audio_manager.play_audio(response.file_hash)
+            case CommandPlayVideo():
+                video_to_play = self.video_manager.get_video_info_for_hash(response.file_hash)
+                if video_to_play is None:
+                    self.request_video_from_server(response.file_hash)
+                self.video_manager.play_video(response.file_hash)
             case CommandPlayStinger():
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.clue_hash)
                 if clue_to_reveal is None:
@@ -416,6 +427,16 @@ class BasicWindow(QWidget):
         if self.layout_update_permitted:
             self.audio_manager.update_layout()
         print("Received audio.")
+        
+    def request_video_from_server(self, clue):
+        data, info_response = self.request_file_from_server(clue, "video:stinger")
+        path = self.write_file_to_path(data, self.video_manager.base_resource_path, info_response)
+        self.video_manager.video_clips.append(VideoInfo(info_response.file_hash, path, info_response.file_info.display_name))
+        self.video_manager.file_hash_map = self.video_manager.populate_file_hash_map()
+        self.video_manager.detect_unknown_videos()
+        if self.layout_update_permitted:
+            self.video_manager.update_layout()
+        print("Received video.")
 
     def request_clue_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "image:clue")

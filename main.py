@@ -16,7 +16,7 @@ from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
     CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, \
-    InfoUpdateFile, CommandUpdateClient, CommandPlayStinger
+    InfoUpdateFile, CommandUpdateClient, CommandPlayStinger, InfoVideoFile, CommandPlayVideo
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -24,6 +24,7 @@ from map.map_manager import MapManager
 from server import gamestate
 from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
+from video.video_manager import VideoManager
 
 base_path = sys.path[0]
 lock = threading.Lock()
@@ -68,6 +69,7 @@ class ThreadedServer(object):
         self.dice_manager = DiceManager(None, base_path)
         self.map_manager = MapManager(None, base_path)
         self.audio_manager = AudioManager(None, base_path)
+        self.video_manager = VideoManager(None, base_path)
         self.update_manager = UpdateManager(None, base_path)
         self.connected_clients = {}
 
@@ -88,6 +90,8 @@ class ThreadedServer(object):
             case CommandRevealClue():
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandPlayAudio():
+                return json.dumps(cmd, cls=CommandEncoder)
+            case CommandPlayVideo():
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandPlayStinger():
                 return json.dumps(cmd, cls=CommandEncoder)
@@ -123,6 +127,10 @@ class ThreadedServer(object):
                 file_to_return = self.audio_manager.get_path_for_hash(file_hash)
                 audio_info = self.audio_manager.get_audio_info_for_hash(file_hash)
                 file_info_detail = InfoAudioFile(audio_info.display_name)
+            case "video:stinger":
+                file_to_return = self.video_manager.get_path_for_hash(file_hash)
+                video_info = self.video_manager.get_video_info_for_hash(file_hash)
+                file_info_detail = InfoVideoFile(video_info.display_name)
             case "image:clue":
                 file_to_return = self.clue_manager.get_path_for_hash(file_hash)
                 clue_info = self.clue_manager.get_clue_for_hash(file_hash)
