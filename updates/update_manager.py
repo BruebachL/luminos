@@ -94,7 +94,7 @@ class UpdateManager(QWidget):
 
     def get_folders(self):
         dir_paths = os.walk(self.base_path)
-        filtered = [".git", "/__pycache__", "/venv", "/env", "/.idea", "egg-info"]
+        filtered = [".git", "/__pycache__", "/venv", "/env", "/.idea", "egg-info", ".log", ".json", ".cfg", "resources"]
         filtered_paths = []
         for dir_path in dir_paths:
             path_filtered = False
