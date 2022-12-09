@@ -4,6 +4,11 @@ from commands.client_info import decode_client_info, ClientInfoEncoder
 from utils.string_utils import fix_up_json_string
 
 
+class CommandUpdateClient:
+    def __init__(self, version, file_hashes):
+        self.version = version
+        self.file_hashes = file_hashes
+
 class CommandUpdateClientInfo:
     def __init__(self, client_info):
         self.client_info = client_info
@@ -89,6 +94,12 @@ class InfoFileRequest:
         self.file_info = file_info
 
 
+class InfoUpdateFile(object):
+    def __init__(self, relative_path):
+        super().__init__()
+        self.relative_path = relative_path
+
+
 class InfoAudioFile:
     def __init__(self, display_name):
         self.display_name = display_name
@@ -109,46 +120,53 @@ class InfoMapFile:
         self.revealed = revealed
 
 def decode_command(dct):
-    match(dct['class']):
-        case "command_update_client_info":
-            return CommandUpdateClientInfo(json.loads(str(dct['client_info']).replace("'", '"'), object_hook=decode_client_info))
-        case "command_query_connected_clients":
-            client_infos = []
-            for connected_client_info in dct['client_infos']:
-                client_infos.append(json.loads(str(connected_client_info).replace("'", '"'), object_hook=decode_client_info))
-            return CommandQueryConnectedClients(client_infos)
-        case "command_file_request":
-            return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])
-        case "listen_up":
-            return CommandListenUp(dct['port'], dct['length'], dct['filename'])
-        case "command_roll_dice":
-            return CommandRollDice(dct['character'], dct['amount'], dct['sides'], dct['rolled_for'], dct['rolled_against'], dct['equalizer'], dct['dice_skins'])
-        case "info_roll_dice":
-            return InfoRollDice(dct['player'], dct['roll_value'], dct['dice_used'], dct['rolled_for'], dct['rolled_against'], dct['success'], dct['dice_skins'])
-        case "info_dice_request_decline":
-            return InfoDiceRequestDecline(dct['name'])
-        case "info_file_request":
-            return InfoFileRequest(dct['name'], dct['extension'], dct['file_type'], dct['file_length'], dct['file_hash'], dct['file_info'])
-        case "info_audio_file":
-            return InfoAudioFile(dct['display_name'])
-        case "info_dice_file":
-            return InfoDiceFile(dct['display_name'], dct['group'])
-        case "info_clue_file":
-            return InfoClueFile(dct['display_name'], dct['revealed'])
-        case "info_map_file":
-            return InfoMapFile(dct['base_map'], dct['revealed'])
-        case "command_reveal_clue":
-            return CommandRevealClue(dct['file_hash'], dct['revealed'])
-        case "command_reveal_map_overlay":
-            return CommandRevealMapOverlay(dct['file_hash'], dct['revealed'])
-        case "command_play_audio":
-            return CommandPlayAudio(dct['file_hash'], dct['duration'])
+    if 'class' in dct:
+        match(dct['class']):
+            case "command_update_client":
+                return CommandUpdateClient(dct['version'], dct['file_hashes'])
+            case "command_update_client_info":
+                return CommandUpdateClientInfo(json.loads(str(dct['client_info']).replace("'", '"'), object_hook=decode_client_info))
+            case "command_query_connected_clients":
+                client_infos = []
+                for connected_client_info in dct['client_infos']:
+                    client_infos.append(json.loads(str(connected_client_info).replace("'", '"'), object_hook=decode_client_info))
+                return CommandQueryConnectedClients(client_infos)
+            case "command_file_request":
+                return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])
+            case "listen_up":
+                return CommandListenUp(dct['port'], dct['length'], dct['filename'])
+            case "command_roll_dice":
+                return CommandRollDice(dct['character'], dct['amount'], dct['sides'], dct['rolled_for'], dct['rolled_against'], dct['equalizer'], dct['dice_skins'])
+            case "info_roll_dice":
+                return InfoRollDice(dct['player'], dct['roll_value'], dct['dice_used'], dct['rolled_for'], dct['rolled_against'], dct['success'], dct['dice_skins'])
+            case "info_dice_request_decline":
+                return InfoDiceRequestDecline(dct['name'])
+            case "info_file_request":
+                return InfoFileRequest(dct['name'], dct['extension'], dct['file_type'], dct['file_length'], dct['file_hash'], dct['file_info'])
+            case "info_update_file":
+                return InfoUpdateFile(dct['relative_path'])
+            case "info_audio_file":
+                return InfoAudioFile(dct['display_name'])
+            case "info_dice_file":
+                return InfoDiceFile(dct['display_name'], dct['group'])
+            case "info_clue_file":
+                return InfoClueFile(dct['display_name'], dct['revealed'])
+            case "info_map_file":
+                return InfoMapFile(dct['base_map'], dct['revealed'])
+            case "command_reveal_clue":
+                return CommandRevealClue(dct['file_hash'], dct['revealed'])
+            case "command_reveal_map_overlay":
+                return CommandRevealMapOverlay(dct['file_hash'], dct['revealed'])
+            case "command_play_audio":
+                return CommandPlayAudio(dct['file_hash'], dct['duration'])
     return dct
 
 
 class CommandEncoder(json.JSONEncoder):
 
     def default(self, c):
+        if isinstance(c, CommandUpdateClient):
+            return {"class": "command_update_client", "version": c.version, "file_hashes": c.file_hashes}
         if isinstance(c, CommandUpdateClientInfo):
             return {"class": "command_update_client_info", "client_info": fix_up_json_string(json.dumps(c.client_info, cls=ClientInfoEncoder))}
         if isinstance(c, CommandQueryConnectedClients):
@@ -173,6 +191,8 @@ class CommandEncoder(json.JSONEncoder):
         elif isinstance(c, InfoFileRequest):
             return {"class": 'info_file_request', "name": c.name, "extension": c.extension, "file_type": c.file_type,
                     "file_length": c.file_length, "file_hash": c.file_hash, "file_info": fix_up_json_string(json.dumps(c.file_info, cls=CommandEncoder))}
+        elif isinstance(c, InfoUpdateFile):
+            return {"class": 'info_update_file', "relative_path": c.relative_path}
         elif isinstance(c, InfoAudioFile):
             return {"class": 'info_audio_file', "display_name": c.display_name}
         elif isinstance(c, InfoDiceFile):

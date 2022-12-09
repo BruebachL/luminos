@@ -14,12 +14,14 @@ from commands.client_info import ClientInfo
 from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
-    CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients
+    CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, \
+    InfoUpdateFile, CommandUpdateClient
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
 from server import gamestate
+from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
 
 base_path = sys.path[0]
@@ -59,11 +61,13 @@ class ThreadedServer(object):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.host, self.port))
         app = QApplication(sys.argv)
+        self.version = "3"
         self.game_state = gamestate.GameState("asdf")
         self.clue_manager = ClueManager(None, base_path)
         self.dice_manager = DiceManager(None, base_path)
         self.map_manager = MapManager(None, base_path)
         self.audio_manager = AudioManager(None, base_path)
+        self.update_manager = UpdateManager(None, base_path)
         self.connected_clients = {}
 
     #server_sequence_log.debug("Client (" + luminos_client.getpeername()[0] + "")
@@ -86,6 +90,13 @@ class ThreadedServer(object):
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandUpdateClientInfo():
                 self.connected_clients[client] = cmd.client_info
+                if cmd.client_info.version < self.version:
+                    self.update_manager.generate_folder_file_hash_map()
+                    client_update_info_response = CommandUpdateClient(self.version, self.update_manager.folder_file_hash_maps)
+                    self.announce_length_and_send(client,
+                                                  bytes(fix_up_json_string(
+                                                      json.dumps(client_update_info_response, cls=CommandEncoder)),
+                                                        "UTF-8"))
             case CommandQueryConnectedClients():
                 connected_clients = []
                 for connected_client in self.connected_clients.keys():
@@ -102,6 +113,9 @@ class ThreadedServer(object):
     def get_requested_file_from_managers(self, file_hash, file_type):
         file_to_return, file_info_detail = None, None
         match file_type:
+            case "file:update":
+                file_to_return = self.update_manager.get_absolute_path_for_hash(file_hash)
+                file_info_detail = InfoUpdateFile(str(self.update_manager.get_relative_folder_path_for_hash(file_hash)))
             case "audio:stinger":
                 file_to_return = self.audio_manager.get_path_for_hash(file_hash)
                 audio_info = self.audio_manager.get_audio_info_for_hash(file_hash)

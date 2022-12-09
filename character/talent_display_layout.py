@@ -8,7 +8,6 @@ class TalentDisplayLayout(QWidget):
         super().__init__(parent)
         self.layout = QVBoxLayout()
         self.parent = parent
-        print(self.parent)
         self.character = self.parent.character
         self.line_edits = []
         self.add_line_edits(talent_group)

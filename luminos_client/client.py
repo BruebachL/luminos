@@ -24,7 +24,7 @@ from clues.clue_manager import ClueManager
 from commands.client_info import ClientInfo
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
-    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients
+    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -32,6 +32,7 @@ from dice.dice_roll_manager_layout import DiceRollManagerLayout
 from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
 from map.overlay_map_info import OverlayMapInfo
+from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
 
 
@@ -68,7 +69,7 @@ class BasicWindow(QWidget):
         self.server_port = server_port
         self.connected_socket = None
         self.attempt_reconnect_to_server()
-        self.client_info = ClientInfo(self.client_id, self.player + "#" + str(self.client_id), "0.3", "Connected.", None)
+        self.client_info = ClientInfo(self.client_id, self.player + "#" + str(self.client_id), "2", "Connected.", None)
         self.output_buffer = []
         self.connected_clients = []
 
@@ -90,6 +91,7 @@ class BasicWindow(QWidget):
         self.clue_manager = None
         self.dice_roll_manager = None
         self.admin_panel = None
+        self.update_manager = None
         self.layout = QHBoxLayout()
 
         # Actually build the layout
@@ -145,6 +147,7 @@ class BasicWindow(QWidget):
         self.audio_manager = AudioManager(self, self.base_path)
         if self.admin_client:
             self.admin_panel = AdminPanel(self, self.connected_clients)
+        self.update_manager = UpdateManager(self, self.base_path)
 
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
@@ -154,11 +157,11 @@ class BasicWindow(QWidget):
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         if self.admin_client:
             self.base_layout.addTab(self.admin_panel, "Admin")
+        self.base_layout.addTab(self.update_manager, "Updates")
 
         # Create the main UI screen with two split layouts
         self.layout.addWidget(self.dice_roll_manager)
         self.layout.addWidget(self.base_layout)
-
 
         self.setLayout(self.layout)
         self.repaint()
@@ -283,6 +286,9 @@ class BasicWindow(QWidget):
 
     def process_server_response(self, response):
         match response:
+            case CommandUpdateClient():
+                self.update_manager.check_for_updated_files(response.file_hashes)
+                self.client_info.version = response.version
             case CommandQueryConnectedClients():
                 if self.admin_client:
                     self.connected_clients = response.connected_client_infos
@@ -365,6 +371,10 @@ class BasicWindow(QWidget):
         file_socket.settimeout(60)
         file_client.sendfile(file)
         file_socket.close()
+
+    def request_file_update_from_server(self, file):
+        data, info_response = self.request_file_from_server(file, "file:update")
+        path = self.write_file_to_path(data, Path(self.update_manager.base_path).joinpath(Path(info_response.file_info.relative_path)), info_response)
 
     def request_audio_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "audio:stinger")
