@@ -12,6 +12,8 @@ class CharacterInfoLayout(QWidget):
         self.columns = 10
         self.total_widgets = self.rows * self.columns
         self.add_buttons()
+        self.layout.setSpacing(20)
+        self.setLayout(self.layout)
 
     def add_buttons(self):
         self.layout.addWidget(QWidget())

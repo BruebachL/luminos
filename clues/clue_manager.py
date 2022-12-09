@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QComboBox
 
 from character.image_widget import ImageWidget
 from clues.clue import Clue, ClueEncoder, decode_clue
+from clues.clue_admin_display import ClueAdminDisplay
 from clues.clue_reveal_button import ClueRevealButton
 from commands.command import CommandRevealClue, CommandEncoder
 
@@ -29,11 +30,15 @@ class ClueManager(QWidget):
                 open(self.clue_config_file, 'x')
             except FileExistsError as e:
                 pass
+
         self.file_hash_map = self.populate_file_hash_map()
         self.clues = []
         self.read_from_file()
         self.detect_unknown_clues()
         self.layout = QGridLayout()
+        self.current_row = 0
+        self.current_column = 0
+        self.max_columns_per_row = 2
         self.add_revealed_clues()
         self.add_admin_panel()
         self.setLayout(self.layout)
@@ -41,9 +46,14 @@ class ClueManager(QWidget):
     def add_admin_panel(self):
         if self.parent is not None:
             if self.parent.admin_client:
+                self.current_row = self.current_row + 1
                 for clue in self.clues:
                     button = ClueRevealButton(self, clue)
-                    self.layout.addWidget(button)
+                    self.layout.addWidget(button, self.current_row, self.current_column)
+                    self.current_column = self.current_column + 1
+                    if self.current_column == self.max_columns_per_row:
+                        self.current_column = 0
+                        self.current_row = self.current_row + 1
 
     def toggle_clue_reveal(self, file_hash):
         for clue in self.clues:
@@ -67,15 +77,19 @@ class ClueManager(QWidget):
 
     def add_revealed_clues(self):
         revealed_clues = self.get_revealed_clues()
-        max_columns_per_row = ceil(sqrt(len(revealed_clues)))
-        current_row = 0
-        current_column = 0
+        self.max_columns_per_row = ceil(sqrt(len(revealed_clues)))
+        self.current_row = 0
+        self.current_column = 0
         for clue in revealed_clues:
-            self.layout.addWidget(ImageWidget(clue.file_path), current_row, current_column)
-            current_column = current_column + 1
-            if current_column == max_columns_per_row:
-                current_column = 0
-                current_row = current_row + 1
+            if self.parent is not None:
+                if self.parent.admin_client:
+                    self.layout.addWidget(ClueAdminDisplay(self, clue), self.current_row, self.current_column)
+                else:
+                    self.layout.addWidget(ImageWidget(clue.file_path), self.current_row, self.current_column)
+            self.current_column = self.current_column + 1
+            if self.current_column == self.max_columns_per_row:
+                self.current_column = 0
+                self.current_row = self.current_row + 1
 
     def get_revealed_clues(self):
         revealed_clues = []

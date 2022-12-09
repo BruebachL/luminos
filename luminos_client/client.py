@@ -381,6 +381,9 @@ class BasicWindow(QWidget):
     #                                                Network (Send)                                                    #
     ####################################################################################################################
 
+    def send_to_server(self, command):
+        self.output_buffer.append(bytes(json.dumps(command, cls=CommandEncoder), "UTF-8"))
+
     def announce_length_and_send(self, server, output):
         server.sendall(len(output).to_bytes(12, 'big'))
         self.client_sequence_log.debug(

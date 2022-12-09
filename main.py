@@ -5,6 +5,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import traceback
 
 from PyQt5.QtWidgets import QApplication
@@ -298,6 +299,8 @@ class ThreadedServer(object):
         return data
 
     def listen_to_client(self, client, address):
+        # time.sleep(5)
+        # self.announce_length_and_send(client, bytes(json.dumps(CommandPlayStinger("7a17e26373a1005ee0c99a243cb6319093e93e4e775ba634677d299c05678464", "4557bd544200e140a353f8ad70367152d565be633ace90325afef34e55cb8a74", 11), cls=CommandEncoder), "UTF-8"))
         while True:
             try:
                 data = self.listen_until_all_data_received(client)
