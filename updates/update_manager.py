@@ -88,20 +88,24 @@ class UpdateManager(QWidget):
         file_hash_map = {}
         onlyfiles = [join(path, f) for f in listdir(path) if isfile(join(path, f))]
         for file_path in onlyfiles:
-            with open(file_path, 'rb') as file:
-                file_hash_map[hashlib.sha256(file.read()).hexdigest()] = str(file_path.replace(os.path.split(str(self.base_path))[0], ''))
+            if not self.is_filtered(file_path):
+                with open(file_path, 'rb') as file:
+                    file_hash_map[hashlib.sha256(file.read()).hexdigest()] = str(file_path.replace(os.path.split(str(self.base_path))[0], ''))
         return file_hash_map
+
+    def is_filtered(self, path):
+        filtered = [".git", "__pycache__", "venv", "env", ".idea", "egg-info", ".log", ".json", ".cfg", "resources"]
+        for filter in filtered:
+            if filter in path:
+                return True
+        return False
 
     def get_folders(self):
         dir_paths = os.walk(self.base_path)
-        filtered = [".git", "/__pycache__", "/venv", "/env", "/.idea", "egg-info", ".log", ".json", ".cfg", "resources"]
+
         filtered_paths = []
         for dir_path in dir_paths:
-            path_filtered = False
-            for filter in filtered:
-                if filter in dir_path[0]:
-                    path_filtered = True
-            if not path_filtered:
+            if not self.is_filtered(dir_path[0]):
                 filtered_paths.append(dir_path[0])
         return filtered_paths
 
