@@ -11,6 +11,7 @@ class TalentDisplayLayout(QWidget):
         self.character = self.parent.character
         self.line_edits = []
         self.add_line_edits(talent_group)
+        self.setLayout(self.layout)
 
     def add_line_edits(self, talent_group):
         for talent in talent_group.talents:

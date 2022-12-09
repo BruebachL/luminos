@@ -15,7 +15,7 @@ from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
     CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, \
-    InfoUpdateFile, CommandUpdateClient
+    InfoUpdateFile, CommandUpdateClient, CommandPlayStinger
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -87,6 +87,8 @@ class ThreadedServer(object):
             case CommandRevealClue():
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandPlayAudio():
+                return json.dumps(cmd, cls=CommandEncoder)
+            case CommandPlayStinger():
                 return json.dumps(cmd, cls=CommandEncoder)
             case CommandUpdateClientInfo():
                 self.connected_clients[client] = cmd.client_info

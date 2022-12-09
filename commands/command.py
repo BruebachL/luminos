@@ -53,6 +53,11 @@ class CommandPlayAudio:
         self.file_hash = file_hash
         self.duration = duration
 
+class CommandPlayStinger:
+    def __init__(self, clue_hash, audio_hash, duration):
+        self.clue_hash = clue_hash
+        self.audio_hash = audio_hash
+        self.duration = duration
 
 class CommandRollDice:
     def __init__(self, character, amount, sides, rolled_for, rolled_against, equalizer, dice_skins):
@@ -159,6 +164,8 @@ def decode_command(dct):
                 return CommandRevealMapOverlay(dct['file_hash'], dct['revealed'])
             case "command_play_audio":
                 return CommandPlayAudio(dct['file_hash'], dct['duration'])
+            case "command_play_stinger":
+                return CommandPlayStinger(dct['clue_hash'], dct['audio_hash'], dct['duration'])
     return dct
 
 
@@ -207,5 +214,7 @@ class CommandEncoder(json.JSONEncoder):
             return {"class": 'command_reveal_map_overlay', "file_hash": c.file_hash, "revealed": c.revealed}
         elif isinstance(c, CommandPlayAudio):
             return {"class": 'command_play_audio', "file_hash": c.file_hash, "duration": c.duration}
+        elif isinstance(c, CommandPlayStinger):
+            return {"class": 'command_play_stinger', 'clue_hash': c.clue_hash, 'audio_hash': c.audio_hash, 'duration': c.duration}
         else:
             return super().default(c)

@@ -18,13 +18,14 @@ from audio.audio_info import AudioInfo
 from audio.audio_manager import AudioManager
 from character.character_manager import CharacterManager
 from character.character import CharacterEncoder
+from character.image_widget import ImageWidget
 from luminos_client.admin_panel import TabbedClientView, AdminPanel
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
 from commands.client_info import ClientInfo
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
-    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient
+    CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient, CommandPlayStinger
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -32,6 +33,7 @@ from dice.dice_roll_manager_layout import DiceRollManagerLayout
 from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
 from map.overlay_map_info import OverlayMapInfo
+from stingers.stinger_control_widget import StingerControlWidget
 from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
 
@@ -93,6 +95,7 @@ class BasicWindow(QWidget):
         self.admin_panel = None
         self.update_manager = None
         self.layout = QHBoxLayout()
+        self.layout_update_permitted = True
 
         # Actually build the layout
         self.build_layout()
@@ -134,6 +137,7 @@ class BasicWindow(QWidget):
     ####################################################################################################################
 
     def build_layout(self):
+        self.layout_update_permitted = False
         QWidget().setLayout(self.layout)
         self.layout = QHBoxLayout()
         self.base_layout = QTabWidget()
@@ -157,6 +161,7 @@ class BasicWindow(QWidget):
         self.base_layout.addTab(self.dice_manager, "Dice Manager")
         if self.admin_client:
             self.base_layout.addTab(self.admin_panel, "Admin")
+            self.base_layout.addTab(StingerControlWidget(self), "Stingers")
         self.base_layout.addTab(self.update_manager, "Updates")
 
         # Create the main UI screen with two split layouts
@@ -164,7 +169,19 @@ class BasicWindow(QWidget):
         self.layout.addWidget(self.base_layout)
 
         self.setLayout(self.layout)
+        self.layout_update_permitted = True
         self.repaint()
+
+    def play_stinger(self, duration, image_hash, audio_hash):
+        self.save_managers()
+        self.layout_update_permitted = False
+        QWidget().setLayout(self.layout)
+        self.layout = QHBoxLayout()
+        self.layout.addWidget(ImageWidget(self.clue_manager.get_clue_for_hash(image_hash).file_path))
+        self.setLayout(self.layout)
+        self.repaint()
+        self.audio_manager.play_audio(audio_hash)
+        QTimer.singleShot(duration * 1000, self.build_layout)
 
 
     ####################################################################################################################
@@ -293,7 +310,8 @@ class BasicWindow(QWidget):
                 if self.admin_client:
                     self.connected_clients = response.connected_client_infos
                     self.admin_panel.connected_clients = self.connected_clients
-                    self.admin_panel.update_layout()
+                    if self.layout_update_permitted:
+                        self.admin_panel.update_layout()
             case InfoRollDice():
                 self.client_sequence_log.debug("Processing dice roll information from server.")
                 dice_not_available = self.dice_manager.check_if_dice_available(response.dice_skins)
@@ -310,19 +328,29 @@ class BasicWindow(QWidget):
                     self.request_clue_from_server(response.file_hash)
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.file_hash)
                 clue_to_reveal.revealed = response.revealed
-                self.clue_manager.update_layout()
+                if self.layout_update_permitted:
+                    self.clue_manager.update_layout()
             case CommandRevealMapOverlay():
                 map_overlay_to_reveal = self.map_manager.get_map_info_for_hash(response.file_hash)
                 if map_overlay_to_reveal is None:
                     self.request_map_from_server(response.file_hash)
                 else:
                     map_overlay_to_reveal.revealed = response.revealed
-                self.map_manager.update_layout()
+                if self.layout_update_permitted:
+                    self.map_manager.update_layout()
             case CommandPlayAudio():
                 audio_to_play = self.audio_manager.get_audio_info_for_hash(response.file_hash)
                 if audio_to_play is None:
                     self.request_audio_from_server(response.file_hash)
                 self.audio_manager.play_audio(response.file_hash)
+            case CommandPlayStinger():
+                clue_to_reveal = self.clue_manager.get_clue_for_hash(response.clue_hash)
+                if clue_to_reveal is None:
+                    self.request_clue_from_server(response.clue_hash)
+                audio_to_play = self.audio_manager.get_audio_info_for_hash(response.audio_hash)
+                if audio_to_play is None:
+                    self.request_audio_from_server(response.audio_hash)
+                self.play_stinger(response.duration, response.clue_hash, response.audio_hash)
             case CommandListenUp():
                 listen_up = json.loads(str(response), object_hook=decode_command)
                 self.receive_file_from_server(listen_up.length, listen_up.port, listen_up.file_name)
@@ -382,14 +410,16 @@ class BasicWindow(QWidget):
         self.audio_manager.audio_clips.append(AudioInfo(info_response.file_hash, path, info_response.file_info.display_name))
         self.audio_manager.file_hash_map = self.audio_manager.populate_file_hash_map()
         self.audio_manager.detect_unknown_audios()
-        self.audio_manager.update_layout()
+        if self.layout_update_permitted:
+            self.audio_manager.update_layout()
         print("Received audio.")
 
     def request_clue_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "image:clue")
         path = self.write_file_to_path(data, self.clue_manager.base_resource_path, info_response)
         self.clue_manager.clues.append(Clue(info_response.file_hash, path, info_response.file_info.display_name, info_response.file_info.revealed))
-        self.clue_manager.update_layout()
+        if self.layout_update_permitted:
+            self.clue_manager.update_layout()
         print("Received clue.")
 
     def request_dice_from_server(self, dice):
@@ -397,7 +427,8 @@ class BasicWindow(QWidget):
         print(str(info_response.name) + "." + str(info_response.extension))
         path = self.write_file_to_path(data, self.dice_manager.base_resource_path, info_response)
         self.dice_manager.add_dice(Dice(info_response.file_info.display_name, info_response.file_info.group, path, False))
-        self.dice_manager.update_layout()
+        if self.layout_update_permitted:
+            self.dice_manager.update_layout()
         print("Received dice.")
 
     def request_map_from_server(self, map_hash):
@@ -410,7 +441,8 @@ class BasicWindow(QWidget):
         else:
             self.map_manager.get_active_map().overlays.append(OverlayMapInfo(path, info_response.file_hash, info_response.file_info.revealed))
             print("Received Map Overlay.")
-        self.map_manager.update_layout()
+        if self.layout_update_permitted:
+            self.map_manager.update_layout()
 
 
     def write_file_to_path(self, data, path, info_response):
