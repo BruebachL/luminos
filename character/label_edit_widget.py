@@ -1,13 +1,14 @@
 import json
 import random
 
-from PyQt5.QtWidgets import QLineEdit, QPushButton, QWidget, QHBoxLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QLineEdit, QPushButton, QWidget, QHBoxLayout, QLabel
 
 from commands.command import CommandRollDice, CommandEncoder
 from utils.qt_utils import get_top_most_parent
 
 
-class ButtonLabelEditWidget(QWidget):
+class ButtonLabelWidget(QWidget):
 
     def __init__(self, parent, label, character, initial_value=None, talent=None, check_against=None):
         super().__init__(parent)
@@ -16,7 +17,7 @@ class ButtonLabelEditWidget(QWidget):
         self.character = character
         self.label = label
         self.talent = talent
-        self.line_edit = QLineEdit()
+        self.display_value = QLabel()
         self.check_against = check_against
         self.dice_to_use = []
         for i in range(3):
@@ -33,13 +34,12 @@ class ButtonLabelEditWidget(QWidget):
             check_against_string = talent.shorthand
         else:
             check_against_string = check_against_string[0:-1]
-        self.line_edit.setText(str(initial_value))
-        self.line_edit.textChanged.connect(self.text_changed)
+        self.display_value.setText(str(initial_value))
         self.button = QPushButton()
         self.button.setText(label + " (" + check_against_string + ")")
         self.button.clicked.connect(self.on_click)
         self.layout.addWidget(self.button)
-        self.layout.addWidget(self.line_edit)
+        self.layout.addWidget(self.display_value, alignment=Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def on_click(self):
@@ -49,8 +49,6 @@ class ButtonLabelEditWidget(QWidget):
         for talent in talents_to_check:
             talent_names.append(talent.name)
             talent_values.append(talent.value)
-        command = CommandRollDice(self.character.name, len(talent_values), 20, self.talent.name, talent_values, int(self.line_edit.text()), self.dice_to_use)
+        command = CommandRollDice(self.character.name, len(talent_values), 20, self.talent.name, talent_values, int(self.display_value.text()), self.dice_to_use)
         self.window().output_buffer.append(bytes(json.dumps(command, cls=CommandEncoder), "UTF-8"))
 
-    def text_changed(self):
-        self.talent.value = self.line_edit.text()

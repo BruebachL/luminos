@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QFormLayout, QWidget, QVBoxLayout
 
-from character.label_edit_widget import ButtonLabelEditWidget
+from character.label_edit_widget import ButtonLabelWidget
 
 
 class TalentDisplayLayout(QWidget):
@@ -15,7 +15,7 @@ class TalentDisplayLayout(QWidget):
 
     def add_line_edits(self, talent_group):
         for talent in talent_group.talents:
-            button_label_edit_widget = ButtonLabelEditWidget(self, talent.name, self.character, talent.value, talent, talent.check_against)
+            button_label_edit_widget = ButtonLabelWidget(self, talent.name, self.character, talent.value, talent, talent.check_against)
             self.layout.addWidget(button_label_edit_widget)
             self.line_edits.append(button_label_edit_widget)
         self.setLayout(self.layout)
