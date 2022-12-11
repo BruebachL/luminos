@@ -16,7 +16,8 @@ class ClientInfo(object):
 
 def decode_client_info(dct):
     if dct['class'] == "client_info":
-        character = json.loads(str(dct['character']).replace("'", '"'), object_hook=decode_character)
+        character = json.loads(str(dct['character']).replace("'", '"'), object_hook=decode_character) if dct['character'] != 'null' and \
+                                                                                                         dct['character'] is not None and dct['character'] != 'None' else None
         return ClientInfo(dct['client_id'], dct['client_friendly_name'], dct['version'], dct['status'], character)
     return dct
 

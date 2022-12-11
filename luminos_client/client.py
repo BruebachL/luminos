@@ -12,6 +12,7 @@ from pathlib import Path
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
 from audio.audio_info import AudioInfo
@@ -19,6 +20,7 @@ from audio.audio_manager import AudioManager
 from character.character_manager import CharacterManager
 from character.character import CharacterEncoder
 from character.image_widget import ImageWidget
+from clues.clue_image_widget import ClueImageWidget
 from luminos_client.admin_panel import TabbedClientView, AdminPanel
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
@@ -84,11 +86,14 @@ class BasicWindow(QWidget):
         self.update_timer.start(1000)
         self.file_port = 1339
 
+        self.query_clients = True if self.admin_client else False
+
         # Layout setup
         self.splash_screen.showMessage("Initializing UI...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
                                        QtCore.Qt.white)
         self.setWindowTitle('DnD Tool')
         self.base_layout = QTabWidget()
+        if self.admin_client: self.base_layout.currentChanged.connect(self.toggle_client_query)
         self.audio_manager = None
         self.video_manager = None
         self.character_manager = None
@@ -104,8 +109,7 @@ class BasicWindow(QWidget):
         # Actually build the layout
         self.build_layout()
         self.send_client_info()
-        self.output_buffer.append(bytes(fix_up_json_string(json.dumps(CommandQueryConnectedClients([]),
-                                                                      cls=CommandEncoder)), "UTF-8"))
+        if self.admin_client: self.query_connected_clients()
 
         # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -145,6 +149,7 @@ class BasicWindow(QWidget):
         QWidget().setLayout(self.layout)
         self.layout = QHBoxLayout()
         self.base_layout = QTabWidget()
+        if self.admin_client: self.base_layout.currentChanged.connect(self.toggle_client_query)
 
         # Create the managers
         self.dice_manager = DiceManager(self, self.base_path)
@@ -183,12 +188,40 @@ class BasicWindow(QWidget):
         self.layout_update_permitted = False
         QWidget().setLayout(self.layout)
         self.layout = QHBoxLayout()
-        self.layout.addWidget(ImageWidget(self.clue_manager.get_clue_for_hash(image_hash).file_path))
+        self.layout.addWidget(ClueImageWidget(self.clue_manager.get_clue_for_hash(image_hash).file_path))
         self.setLayout(self.layout)
         self.repaint()
         self.audio_manager.play_audio(audio_hash)
         QTimer.singleShot(duration * 1000, self.build_layout)
 
+    def play_video(self, duration, video_hash):
+        self.save_managers()
+        self.layout_update_permitted = False
+        QWidget().setLayout(self.layout)
+        self.layout = QHBoxLayout()
+        video_widget = QVideoWidget()
+        self.video_manager.player.setVideoOutput(video_widget)
+        self.layout.addWidget(video_widget)
+        self.setLayout(self.layout)
+        self.repaint()
+        self.video_manager.play_video(video_hash)
+        QTimer.singleShot(duration * 1000, self.build_layout)
+
+    def toggle_client_query(self):
+        active_tab = self.base_layout.widget(self.base_layout.currentIndex())
+        print(active_tab)
+        print(type(active_tab))
+        if isinstance(active_tab, AdminPanel):
+            self.query_clients = False
+        else:
+            self.query_clients = True
+        self.query_connected_clients()
+
+
+    def query_connected_clients(self):
+        if self.query_clients:
+            self.send_to_server(CommandQueryConnectedClients([]))
+            QTimer.singleShot(10000, self.query_connected_clients)
 
     ####################################################################################################################
     #                                                Network (General)                                                 #
@@ -353,7 +386,7 @@ class BasicWindow(QWidget):
                 video_to_play = self.video_manager.get_video_info_for_hash(response.file_hash)
                 if video_to_play is None:
                     self.request_video_from_server(response.file_hash)
-                self.video_manager.play_video(response.file_hash)
+                self.play_video(24, response.file_hash)
             case CommandPlayStinger():
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.clue_hash)
                 if clue_to_reveal is None:
@@ -385,7 +418,7 @@ class BasicWindow(QWidget):
     def decode_server_command(self, command):
         if isinstance(command, str):
             command = json.loads(command)
-        return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false'),
+        return json.loads(str(command).replace('\'', '\"').replace('True', 'true').replace('False', 'false').replace('None', 'null'),
                           object_hook=decode_command)
 
     ####################################################################################################################

@@ -50,7 +50,6 @@ class VideoManager(QWidget):
             raise Exception
         media_content = QMediaContent(QUrl.fromLocalFile(video_to_play))
         self.player.setMedia(media_content)
-        self.player.setVideoOutput(self.video_widget)
         self.player.play()
 
     def add_admin_panel(self):

@@ -143,7 +143,7 @@ def decode_command(dct):
             case "command_query_connected_clients":
                 client_infos = []
                 for connected_client_info in dct['client_infos']:
-                    client_infos.append(json.loads(str(connected_client_info).replace("'", '"'), object_hook=decode_client_info))
+                    client_infos.append(json.loads(str(connected_client_info).replace("'", '"').replace('True', 'true').replace('False', 'false').replace('None', 'null'), object_hook=decode_client_info))
                 return CommandQueryConnectedClients(client_infos)
             case "command_file_request":
                 return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])

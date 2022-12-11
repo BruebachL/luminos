@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QCheckBox
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QCheckBox, QVBoxLayout
 
-from character.image_widget import ImageWidget
+from clues.clue_image_widget import ClueImageWidget
 from commands.command import CommandRevealClue
 
 
@@ -11,11 +11,13 @@ class ClueAdminDisplay(QWidget):
         self.setParent(parent)
         self.parent = parent
         self.clue_info = clue_info
-        self.layout = QHBoxLayout()
-        self.clue_image = ImageWidget(self.clue_info.file_path)
+        self.layout = QVBoxLayout()
+        self.clue_image = ClueImageWidget(self.clue_info.file_path)
         self.revealed_checkbox = QCheckBox()
         self.revealed_checkbox.setChecked(self.clue_info.revealed)
         self.revealed_checkbox.stateChanged.connect(self.update_clue_revealed)
+        self.revealed_checkbox.sizePolicy().setVerticalStretch(1)
+        self.revealed_checkbox.sizePolicy().setHorizontalStretch(1)
         self.layout.addWidget(self.clue_image)
         self.layout.addWidget(self.revealed_checkbox)
         self.setLayout(self.layout)

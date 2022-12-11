@@ -12,8 +12,10 @@ class ConnectedClientDisplay(QWidget):
         super().__init__(parent)
         self.client = client
         self.client_infos = ConnectedClientInfoDisplay(client)
-        self.character_display = CharacterDisplayWidget(self, client.character)
+        if client.character is not None:
+            self.character_display = CharacterDisplayWidget(self, client.character)
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.client_infos)
-        self.layout.addWidget(self.character_display)
+        if client.character is not None:
+            self.layout.addWidget(self.character_display)
         self.setLayout(self.layout)
