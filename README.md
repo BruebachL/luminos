@@ -23,6 +23,8 @@ Index entries also hold unique information defined by the manager (e.g. duration
 
 This allows the client and the server to request files from each other by first specifying the file type (e.g. "image:map") which lets the other side know which manager to use to access this file and then specifying a file hash, which lets the manager know which file to load.
 
+This also allows the user to include a file in their campaign by simply pasting it into the correct resource folder. It will then be available on the next launch of the client.
+
 ## Client/Server Communication
 
 Client and Server communicate over a TCP connection on port 1337 using serialized JSON objects. Both Client and Server expect each other to first announce the payload length (packed into 12 bytes) and then send the actual payload. This is done to avoid passing a partial transmission to the JSON deserializer. Payloads are only processed once they have been received in full.
