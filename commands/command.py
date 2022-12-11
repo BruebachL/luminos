@@ -1,5 +1,6 @@
 import json
 
+from character.character import decode_character, CharacterEncoder
 from commands.client_info import decode_client_info, ClientInfoEncoder
 from utils.string_utils import fix_up_json_string
 
@@ -24,6 +25,10 @@ class CommandUpdateClientInfo:
 class CommandQueryConnectedClients:
     def __init__(self, connected_client_infos):
         self.connected_client_infos = connected_client_infos
+
+class CommandUpdateCharacter:
+    def __init__(self, character):
+        self.character = character
 
 
 class CommandFileRequest:
@@ -151,6 +156,8 @@ def decode_command(dct):
                 for connected_client_info in dct['client_infos']:
                     client_infos.append(json.loads(str(connected_client_info).replace("'", '"').replace('True', 'true').replace('False', 'false').replace('None', 'null'), object_hook=decode_client_info))
                 return CommandQueryConnectedClients(client_infos)
+            case "command_update_character":
+                return CommandUpdateCharacter(json.loads(str(dct['character']).replace("'", '"').replace('True', 'true').replace('False', 'false').replace('None', 'null'), object_hook=decode_character))
             case "command_file_request":
                 return CommandFileRequest(dct['file_hash'], dct['file_type'], dct['port'])
             case "listen_up":
@@ -202,6 +209,8 @@ class CommandEncoder(json.JSONEncoder):
             for client_info in c.connected_client_infos:
                 json_infos.append(fix_up_json_string(json.dumps(client_info, cls=ClientInfoEncoder)))
             return {"class": "command_query_connected_clients", "client_infos": json_infos}
+        if isinstance(c, CommandUpdateCharacter):
+            return {"class": "command_update_character", "character": fix_up_json_string(json.dumps(c.character, cls=CharacterEncoder))}
         if isinstance(c, CommandFileRequest):
             return {"class": 'command_file_request', "file_hash": c.file_hash, "file_type": c.file_type,"port": c.port}
         elif isinstance(c, CommandListenUp):

@@ -28,7 +28,7 @@ from commands.client_info import ClientInfo
 from commands.command import decode_command, InfoRollDice, CommandListenUp, InfoDiceRequestDecline, \
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
     CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient, CommandPlayStinger, \
-    CommandPlayVideo
+    CommandPlayVideo, CommandUpdateCharacter
 from config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
@@ -346,6 +346,10 @@ class BasicWindow(QWidget):
                     self.admin_panel.connected_clients = self.connected_clients
                     if self.layout_update_permitted:
                         self.admin_panel.update_layout()
+            case CommandUpdateCharacter():
+                self.character_manager.character = response.character
+                self.save_managers()
+                self.build_layout()
             case InfoRollDice():
                 self.client_sequence_log.debug("Processing dice roll information from server.")
                 dice_not_available = self.dice_manager.check_if_dice_available(response.dice_skins)
