@@ -54,3 +54,5 @@ Available commands are:
 On connection, the client sends a ClientInfo object to the server containing information about the client, like its ID and its version numbers.
 
 If the Server detects that the client version is lower than the server version, it will initiate an update. To do this, it engages its UpdateManager which rebuilds its index before sending it to the client. The client similarly engages its UpdateManager to hash all files, compares them against the server's files, determines which ones it is missing and then initiates a file request for each missing file. Since this is done by file hash and not file name, this detects if a file was modified.
+
+Files which should be IGNORED during updates may be configured by including them in update.cfg
