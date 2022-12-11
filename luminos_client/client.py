@@ -566,6 +566,7 @@ class BasicWindow(QWidget):
         self.character_manager.save_to_file()
         self.map_manager.save_to_file()
         self.clue_manager.save_to_file()
+        self.video_manager.save_to_file()
         # self.dice_roll_manager.save_to_file()
 
 
