@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QSizePolicy
 
 from character.character_info_layout import CharacterInfoLayout
 from character.talent_group_edit_layout import TalentGroupEditLayout
@@ -10,6 +10,10 @@ class CharacterEditWidget(QWidget):
         encasing_layout = QVBoxLayout()
         character_base_and_info_layout = QHBoxLayout()
         character_info_layout = CharacterInfoLayout(self, character)
+        self.size_policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.size_policy.setHorizontalStretch(1)
+        self.size_policy.setVerticalStretch(1)
+        character_info_layout.setSizePolicy(self.size_policy)
         character_base_and_info_layout.addWidget(character_info_layout)
         talent_tabs = QTabWidget()
         for talent_group in character.talent_groups:

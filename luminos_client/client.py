@@ -86,7 +86,7 @@ class BasicWindow(QWidget):
         self.update_timer.start(1000)
         self.file_port = 1339
 
-        self.query_clients = True if self.admin_client else False
+        self.query_clients = False
 
         # Layout setup
         self.splash_screen.showMessage("Initializing UI...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -108,7 +108,6 @@ class BasicWindow(QWidget):
 
         # Actually build the layout
         self.build_layout()
-        self.send_client_info()
 
         # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -162,6 +161,9 @@ class BasicWindow(QWidget):
             self.admin_panel = AdminPanel(self, self.connected_clients)
         self.update_manager = UpdateManager(self, self.base_path)
 
+        # Send updated state to server
+        self.send_client_info()
+
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
         self.base_layout.addTab(self.map_manager, "Map")
@@ -207,12 +209,15 @@ class BasicWindow(QWidget):
         QTimer.singleShot(duration * 1000, self.build_layout)
 
     def toggle_client_query(self):
-        active_tab = self.base_layout.widget(self.base_layout.currentIndex())
-        if isinstance(active_tab, AdminPanel):
-            self.query_clients = False
-        else:
-            self.query_clients = True
-        self.query_connected_clients()
+        if self.admin_client:
+            active_tab = self.base_layout.widget(self.base_layout.currentIndex())
+            if isinstance(active_tab, AdminPanel):
+                self.query_clients = False
+            else:
+                if not self.query_clients:
+                    self.query_clients = True
+                    self.query_connected_clients()
+
 
 
     def query_connected_clients(self):
