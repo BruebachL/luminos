@@ -395,6 +395,7 @@ class BasicWindow(QWidget):
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.clue_hash)
                 if clue_to_reveal is None:
                     self.request_clue_from_server(response.clue_hash)
+                self.clue_manager.get_clue_for_hash(response.clue_hash).revealed = True
                 audio_to_play = self.audio_manager.get_audio_info_for_hash(response.audio_hash)
                 if audio_to_play is None:
                     self.request_audio_from_server(response.audio_hash)
