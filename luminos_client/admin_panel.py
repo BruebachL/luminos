@@ -11,16 +11,23 @@ class AdminPanel(QWidget):
         self.parent = parent
         self.connected_clients = connected_clients
         self.layout = QVBoxLayout()
-        self.layout.addWidget(AdminActions(self))
-        self.layout.addWidget(TabbedClientView(self, self.connected_clients))
+        self.admin_actions = AdminActions(self)
+        self.connected_clients_tabbed_view = TabbedClientView(self, self.connected_clients)
+        self.layout.addWidget(self.admin_actions)
+        self.layout.addWidget(self.connected_clients_tabbed_view)
         self.setLayout(self.layout)
 
     def update_layout(self):
         QWidget().setLayout(self.layout)
         new_layout = QVBoxLayout()
         self.layout = new_layout
-        self.layout.addWidget(AdminActions(self))
-        self.layout.addWidget(TabbedClientView(self, self.connected_clients))
+        self.admin_actions = AdminActions(self)
+        self.connected_clients_tabbed_view = TabbedClientView(self, self.connected_clients)
+        self.layout.addWidget(self.admin_actions)
+        self.layout.addWidget(self.connected_clients_tabbed_view)
         self.setLayout(new_layout)
+
+    def get_selected_client(self):
+        return self.connected_clients_tabbed_view.widget(self.connected_clients_tabbed_view.currentIndex()).client
 
 

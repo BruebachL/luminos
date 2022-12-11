@@ -84,6 +84,9 @@ class ThreadedServer(object):
                         break
                 else:
                     return
+                if isinstance(cmd.command_to_send, CommandUpdateClient):
+                    self.update_manager.generate_folder_file_hash_map()
+                    cmd.command_to_send = CommandUpdateClient(self.version, self.update_manager.folder_file_hash_maps)
                 self.announce_length_and_send(client_to_send,
                                               bytes(fix_up_json_string(
                                                   json.dumps(cmd.command_to_send, cls=CommandEncoder)),
