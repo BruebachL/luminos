@@ -3,6 +3,10 @@ import json
 from commands.client_info import decode_client_info, ClientInfoEncoder
 from utils.string_utils import fix_up_json_string
 
+class CommandSendToClient:
+    def __init__(self, client, command_to_send):
+        self.client = client
+        self.command_to_send = command_to_send
 
 class CommandUpdateClient:
     def __init__(self, version, file_hashes):
@@ -136,6 +140,8 @@ class InfoMapFile:
 def decode_command(dct):
     if 'class' in dct:
         match(dct['class']):
+            case "command_send_to_client":
+                return CommandSendToClient(dct['client'], dct['command_to_send'])
             case "command_update_client":
                 return CommandUpdateClient(dct['version'], dct['file_hashes'])
             case "command_update_client_info":
@@ -185,6 +191,8 @@ def decode_command(dct):
 class CommandEncoder(json.JSONEncoder):
 
     def default(self, c):
+        if isinstance(c, CommandSendToClient):
+            return {"class": "command_send_to_client", "client": c.client, "command_to_send": c.command_to_send}
         if isinstance(c, CommandUpdateClient):
             return {"class": "command_update_client", "version": c.version, "file_hashes": c.file_hashes}
         if isinstance(c, CommandUpdateClientInfo):

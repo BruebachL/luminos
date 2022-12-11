@@ -16,7 +16,7 @@ from clues.clue_manager import ClueManager
 from commands.command import CommandRollDice, CommandFileRequest, InfoDiceRequestDecline, CommandEncoder, \
     InfoDiceFile, CommandListenUp, decode_command, InfoFileRequest, InfoMapFile, InfoClueFile, CommandRevealMapOverlay, \
     CommandRevealClue, InfoAudioFile, CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, \
-    InfoUpdateFile, CommandUpdateClient, CommandPlayStinger, InfoVideoFile, CommandPlayVideo
+    InfoUpdateFile, CommandUpdateClient, CommandPlayStinger, InfoVideoFile, CommandPlayVideo, CommandSendToClient
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from map.base_map_info import BaseMapInfo
@@ -77,6 +77,18 @@ class ThreadedServer(object):
     def execute_command(self, client, game_state, command):
         cmd = json.loads(command, object_hook=decode_command)
         match cmd:
+            case CommandSendToClient():
+                for available_client in self.connected_clients.keys():
+                    if self.connected_clients[available_client].client_friendly_name == cmd.client:
+                        client_to_send = available_client
+                        break
+                else:
+                    return
+                self.announce_length_and_send(client_to_send,
+                                              bytes(fix_up_json_string(
+                                                  json.dumps(cmd.command_to_send, cls=CommandEncoder)),
+                                                  "UTF-8"))
+
             case CommandRollDice():
                 server_sequence_log.debug("Rolling some dice for Client (" + client.getpeername()[0] + ":" + str(client.getpeername()[1]) + ")")
                 return game_state.add_dice_roll(cmd)

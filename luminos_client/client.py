@@ -109,7 +109,6 @@ class BasicWindow(QWidget):
         # Actually build the layout
         self.build_layout()
         self.send_client_info()
-        if self.admin_client: self.query_connected_clients()
 
         # Finalize splash screen
         self.splash_screen.showMessage("Done! Launching...", QtCore.Qt.AlignBottom | QtCore.Qt.AlignCenter,
@@ -209,8 +208,6 @@ class BasicWindow(QWidget):
 
     def toggle_client_query(self):
         active_tab = self.base_layout.widget(self.base_layout.currentIndex())
-        print(active_tab)
-        print(type(active_tab))
         if isinstance(active_tab, AdminPanel):
             self.query_clients = False
         else:
@@ -243,7 +240,7 @@ class BasicWindow(QWidget):
             else:
                 cmd = json.loads(received_command, object_hook=self.decode_server_command)
                 if received_command != "None":
-                    print(cmd)
+                    # print(cmd)
                     self.process_server_response(cmd)
 
         for write_sock in write_sockets:
@@ -297,17 +294,15 @@ class BasicWindow(QWidget):
             "Client listening to server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") ...")
         server.setblocking(True)
         length = int.from_bytes(server.recv(12), 'big')
-        print("Server length: {}".format(length))
+        # print("Server length: {}".format(length))
         self.client_sequence_log.debug(
             "Server (" + server.getpeername()[0] + ":" + str(server.getpeername()[1]) + ") announced " + str(
                 length) + " of data.")
         data = ""
         left_to_receive = length
         while len(data) != length:
-            print(len(data))
             server.setblocking(True)
             partial_data = server.recv(left_to_receive)
-            print(partial_data)
             if partial_data is not [] or partial_data is not None:
                 try:
                     while partial_data[0] != 123:
