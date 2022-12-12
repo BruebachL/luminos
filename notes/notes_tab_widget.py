@@ -3,6 +3,7 @@ import os
 from PyQt5.QtWidgets import QTabWidget, QWidget, QInputDialog, QLineEdit
 
 from notes.note import Note
+from notes.note_control_widget import NoteControlWidget
 from notes.note_widget import NoteWidget
 
 
@@ -17,11 +18,9 @@ class NotesTabWidget(QTabWidget):
         self.currentChanged.connect(self.check_if_create_new_note_tab_was_selected)
         self.add_note_tabs()
 
-
-
     def add_note_tabs(self):
         for note in self.notes:
-            self.addTab(NoteWidget(self, note), note.display_name)
+            self.addTab(NoteControlWidget(self, note), note.display_name)
         self.addTab(self.add_note_tab, "+")
 
     def check_if_create_new_note_tab_was_selected(self):
@@ -40,7 +39,7 @@ class NotesTabWidget(QTabWidget):
                     self.parent.notes = []
                     self.parent.read_from_file()
                     self.parent.detect_unknown_notes()
-                    self.prune_deleted_notes()
+                    self.parent.prune_deleted_notes()
                     self.parent.update_layout()
             else:
                 new_path = os.path.join(self.parent.base_resource_path, "default.txt")
@@ -54,7 +53,7 @@ class NotesTabWidget(QTabWidget):
                 self.parent.notes = []
                 self.parent.read_from_file()
                 self.parent.detect_unknown_notes()
-                self.prune_deleted_notes()
+                self.parent.prune_deleted_notes()
                 self.notes = self.parent.notes
                 for i in range(self.count()):
                     self.widget(i).setParent(QWidget())
