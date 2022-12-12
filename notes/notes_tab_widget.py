@@ -37,8 +37,10 @@ class NotesTabWidget(QTabWidget):
                         except FileExistsError as e:
                             pass
                     self.parent.file_hash_map = self.parent.populate_file_hash_map()
+                    self.parent.notes = []
                     self.parent.read_from_file()
                     self.parent.detect_unknown_notes()
+                    self.prune_deleted_notes()
                     self.parent.update_layout()
             else:
                 new_path = os.path.join(self.parent.base_resource_path, "default.txt")
@@ -49,8 +51,10 @@ class NotesTabWidget(QTabWidget):
                     except FileExistsError as e:
                         pass
                 self.parent.file_hash_map = self.parent.populate_file_hash_map()
+                self.parent.notes = []
                 self.parent.read_from_file()
                 self.parent.detect_unknown_notes()
+                self.prune_deleted_notes()
                 self.notes = self.parent.notes
                 for i in range(self.count()):
                     self.widget(i).setParent(QWidget())

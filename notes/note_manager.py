@@ -32,6 +32,7 @@ class NoteManager(QWidget):
         self.notes = []
         self.read_from_file()
         self.detect_unknown_notes()
+        self.prune_deleted_notes()
         self.layout = QVBoxLayout()
         self.note_tabs = None
         self.update_layout()
@@ -70,6 +71,11 @@ class NoteManager(QWidget):
                 with open(self.file_hash_map[file_hash]) as file:
                     content = file.read()
                     self.notes.append(Note(file_hash, self.file_hash_map[file_hash], ''.join(os.path.split(self.file_hash_map[file_hash])[1].split('.txt')[:-1]), content))
+
+    def prune_deleted_notes(self):
+        for note in self.notes:
+            if note.file_hash not in self.file_hash_map.keys():
+                self.notes.remove(note)
 
     def read_from_file(self):
         file = open(self.note_config_file, "r")
