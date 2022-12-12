@@ -6,8 +6,9 @@ from utils.string_utils import get_free_name
 
 
 class TalentGroupEditLayout(QVBoxLayout):
-    def __init__(self, character, talent_group):
+    def __init__(self, parent, character, talent_group):
         super().__init__()
+        self.parent = parent
         self.setSpacing(10)
         self.character = character
         self.talent_group = talent_group
@@ -40,10 +41,12 @@ class TalentGroupEditLayout(QVBoxLayout):
             talent_edit_layout = TalentEditLayout(self, self.character, talent)
             self.line_edits.append(talent_edit_layout)
             self.layout().addLayout(talent_edit_layout)
-        add_talent_button = QPushButton()
-        add_talent_button.setText("+")
+        add_talent_button = QPushButton("Add Talent")
         add_talent_button.clicked.connect(self.add_talent)
+        remove_talent_group_button = QPushButton("Remove Talent Group")
+        remove_talent_group_button.clicked.connect(self.remove_talent_group)
         self.layout().addWidget(add_talent_button)
+        self.layout().addWidget(remove_talent_group_button)
 
     def add_talent(self):
         self.character.add_talent(
@@ -51,4 +54,9 @@ class TalentGroupEditLayout(QVBoxLayout):
                    get_free_name("New Talent", (existing_talent.name for existing_talent in self.talent_group.talents)),
                    "", ["", "", ""], 0))
         self.update_layout()
+
+    def remove_talent_group(self):
+        self.character.delete_talent_group(self.talent_group)
+        self.update_layout()
+        self.parent.build_layout()
 

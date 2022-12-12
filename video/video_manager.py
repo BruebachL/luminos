@@ -8,7 +8,7 @@ from pathlib import Path
 from PyQt5.QtCore import QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QComboBox
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QComboBox, QLineEdit
 
 from video.video_info import VideoInfo, decode_video_info, VideoInfoEncoder
 from commands.command import CommandEncoder, CommandPlayVideo
@@ -32,13 +32,14 @@ class VideoManager(QWidget):
         self.file_hash_map = self.populate_file_hash_map()
         self.player = QMediaPlayer()
         self.video_widget = QVideoWidget()
+        self.media_content = None
         self.player.setVideoOutput(self.video_widget)
-
         self.video_clips = []
         self.read_from_file()
         self.detect_unknown_videos()
         self.layout = QGridLayout()
         self.combo_box = QComboBox()
+        self.duration = QLineEdit()
         self.add_admin_panel()
         self.layout.addWidget(self.video_widget)
         self.setLayout(self.layout)
@@ -48,8 +49,8 @@ class VideoManager(QWidget):
         if video_to_play is None:
             # video_to_play = self.request_video_from_server(video_hash)
             raise Exception
-        media_content = QMediaContent(QUrl.fromLocalFile(video_to_play))
-        self.player.setMedia(media_content)
+        self.media_content = QMediaContent(QUrl.fromLocalFile(video_to_play))
+        self.player.setMedia(self.media_content)
         self.player.play()
 
     def add_admin_panel(self):
@@ -61,18 +62,24 @@ class VideoManager(QWidget):
                 self.combo_box = QComboBox()
                 for video_info in self.video_clips:
                     self.combo_box.addItem(video_info.file_path)
+                self.duration = QLineEdit()
+                self.duration.setText("0")
                 #self.combo_box.setCurrentText(self.video_clips[0].file_path)
                 #combo_box.currentTextChanged.connect(self.update_combo)
                 #combo_box.currentIndexChanged.connect(self.update_combo)
                 #combo_box.editTextChanged.connect(self.update_combo)
                 self.layout.addWidget(self.combo_box)
+                self.layout.addWidget(self.duration)
 
     def play_selected_video(self):
+        try:
+            duration = int(self.duration.text())
+        except Exception as e:
+            duration = 10
         for video_info in self.video_clips:
             if video_info.file_path == self.combo_box.currentText():
-                #self.play_video(video_info.file_hash)
                 self.parent.output_buffer.append(bytes(
-                    json.dumps(CommandPlayVideo(video_info.file_hash, 0),
+                    json.dumps(CommandPlayVideo(video_info.file_hash, duration),
                                cls=CommandEncoder), "UTF-8"))
         self.update_layout()
 

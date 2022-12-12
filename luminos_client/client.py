@@ -12,6 +12,7 @@ from pathlib import Path
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtMultimedia import QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
@@ -36,6 +37,7 @@ from dice.dice_roll_manager_layout import DiceRollManagerLayout
 from map.base_map_info import BaseMapInfo
 from map.map_manager import MapManager
 from map.overlay_map_info import OverlayMapInfo
+from notes.note_manager import NoteManager
 from stingers.stinger_control_widget import StingerControlWidget
 from updates.update_manager import UpdateManager
 from utils.string_utils import fix_up_json_string
@@ -97,6 +99,7 @@ class BasicWindow(QWidget):
         self.audio_manager = None
         self.video_manager = None
         self.character_manager = None
+        self.note_manager = None
         self.dice_manager = None
         self.map_manager = None
         self.clue_manager = None
@@ -105,7 +108,7 @@ class BasicWindow(QWidget):
         self.update_manager = None
         self.layout = QHBoxLayout()
         self.layout_update_permitted = True
-
+        self.video_widget = None
         # Actually build the layout
         self.build_layout()
 
@@ -145,6 +148,7 @@ class BasicWindow(QWidget):
     def build_layout(self):
         self.layout_update_permitted = False
         QWidget().setLayout(self.layout)
+
         self.layout = QHBoxLayout()
         self.base_layout = QTabWidget()
         if self.admin_client: self.base_layout.currentChanged.connect(self.toggle_client_query)
@@ -152,6 +156,7 @@ class BasicWindow(QWidget):
         # Create the managers
         self.dice_manager = DiceManager(self, self.base_path)
         self.character_manager = CharacterManager(self, self.base_path)
+        self.note_manager = NoteManager(self, self.base_path)
         self.map_manager = MapManager(self, self.base_path)
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
@@ -161,11 +166,14 @@ class BasicWindow(QWidget):
             self.admin_panel = AdminPanel(self, self.connected_clients)
         self.update_manager = UpdateManager(self, self.base_path)
 
+        self.video_widget = QVideoWidget()
+
         # Send updated state to server
         self.send_client_info()
 
         # Create the main function tabs
         self.base_layout = self.character_manager.generate_ui_tabs(self.base_layout)
+        self.base_layout.addTab(self.note_manager, "Notes")
         self.base_layout.addTab(self.map_manager, "Map")
         self.base_layout.addTab(self.clue_manager, "Clues")
         self.base_layout.addTab(self.audio_manager, "Audio")
@@ -179,8 +187,8 @@ class BasicWindow(QWidget):
         # Create the main UI screen with two split layouts
         self.layout.addWidget(self.dice_roll_manager)
         self.layout.addWidget(self.base_layout)
-
         self.setLayout(self.layout)
+        self.base_layout.currentChanged.connect(self.save_managers)
         self.layout_update_permitted = True
         self.repaint()
 
@@ -200,13 +208,21 @@ class BasicWindow(QWidget):
         self.layout_update_permitted = False
         QWidget().setLayout(self.layout)
         self.layout = QHBoxLayout()
-        video_widget = QVideoWidget()
-        self.video_manager.player.setVideoOutput(video_widget)
-        self.layout.addWidget(video_widget)
+        self.video_widget = QVideoWidget()
+        self.video_manager.player.setVideoOutput(self.video_widget)
+        self.layout.addWidget(self.video_widget)
         self.setLayout(self.layout)
         self.repaint()
+        if duration == 0:
+            self.video_manager.player.mediaStatusChanged.connect(self.check_if_playback_has_finished)
+        else:
+            QTimer.singleShot(duration * 1000, self.build_layout)
         self.video_manager.play_video(video_hash)
-        QTimer.singleShot(duration * 1000, self.build_layout)
+
+
+    def check_if_playback_has_finished(self):
+        if self.video_manager.player.mediaStatus() == QMediaPlayer.EndOfMedia:
+            QTimer.singleShot(300, self.build_layout)
 
     def toggle_client_query(self):
         if self.admin_client:
@@ -390,7 +406,7 @@ class BasicWindow(QWidget):
                 video_to_play = self.video_manager.get_video_info_for_hash(response.file_hash)
                 if video_to_play is None:
                     self.request_video_from_server(response.file_hash)
-                self.play_video(24, response.file_hash)
+                self.play_video(response.duration, response.file_hash)
             case CommandPlayStinger():
                 clue_to_reveal = self.clue_manager.get_clue_for_hash(response.clue_hash)
                 if clue_to_reveal is None:
@@ -564,6 +580,7 @@ class BasicWindow(QWidget):
         self.audio_manager.save_to_file()
         self.dice_manager.save_to_file()
         self.character_manager.save_to_file()
+        self.note_manager.save_to_file()
         self.map_manager.save_to_file()
         self.clue_manager.save_to_file()
         self.video_manager.save_to_file()

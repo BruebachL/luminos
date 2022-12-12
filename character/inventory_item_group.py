@@ -27,7 +27,7 @@ class InventoryItemGroupEncoder(json.JSONEncoder):
         if isinstance(i, InventoryItemGroup):
             json_items = []
             for item in i.items:
-                json_items.append(fix_up_json_string(json.dumps(item, cls=InventoryItemEncoder, ensure_ascii=False)))
+                json_items.append(fix_up_json_string(json.dumps(item, cls=InventoryItemEncoder, separators=(',', ': '), indent=12, ensure_ascii=False)))
             return {"class": 'inventory_item_group', "name": i.name, "items": json_items}
         else:
             return super().default(i)

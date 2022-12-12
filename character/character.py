@@ -1,8 +1,6 @@
 import json
 
-from character.inventory import decode_inventory, InventoryEncoder, Inventory
-from character.inventory_item import InventoryItem
-from character.inventory_item_group import InventoryItemGroup
+from character.inventory import decode_inventory, InventoryEncoder
 from character.talent import decode_talent
 from character.talent_group import TalentGroup, TalentGroupEncoder, decode_talent_group
 from utils.string_utils import fix_up_json_string
@@ -33,6 +31,12 @@ class Character:
             else:
                 self.talent_groups.append(TalentGroup(group[0], group[1]))
 
+    def delete_talent_group(self, talent_group_to_delete):
+        for talent_group in self.talent_groups:
+            if talent_group.equals(talent_group_to_delete):
+                self.talent_groups.remove(talent_group)
+                break
+
     def get_talents_to_check_against(self, to_check_against):
         talents = []
         for check_against in to_check_against:
@@ -52,12 +56,11 @@ class Character:
                         return i, j
 
     def add_talent(self, talent_to_add):
-        found = False
         for talent_group in self.talent_groups:
             if talent_group.name == talent_to_add.group:
                 talent_group.talents.append(talent_to_add)
-                found = True
-        if not found:
+                break
+        else:
             self.talent_groups.append(TalentGroup(talent_to_add.group, [talent_to_add]))
 
     def update_talent(self, talent_to_update):
@@ -94,9 +97,9 @@ class CharacterEncoder(json.JSONEncoder):
         if isinstance(c, Character):
             json_talents = []
             for talent_group in c.talent_groups:
-                json_talents.append(fix_up_json_string(json.dumps(talent_group, cls=TalentGroupEncoder, ensure_ascii=False)))
+                json_talents.append(fix_up_json_string(json.dumps(talent_group, cls=TalentGroupEncoder, ensure_ascii=False, separators=(',', ': '), indent=4)))
             return {"class": 'character', "name": c.name, "age": c.age, "occupation": c.occupation,
-                    "inventory": fix_up_json_string(json.dumps(c.inventory, cls=InventoryEncoder, ensure_ascii=False)),
+                    "inventory": fix_up_json_string(json.dumps(c.inventory, cls=InventoryEncoder, separators=(',', ': '), indent=4, ensure_ascii=False)),
                     "talent_groups": json_talents}
         else:
             return super().default(c)

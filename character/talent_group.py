@@ -14,6 +14,9 @@ class TalentGroup:
             else:
                 self.add_talent(talent[0], talent[1])
 
+    def equals(self, to_compare_to):
+        return self.name == to_compare_to.name
+
     def add_talent(self, talent_name, talent_value):
         self.talents.append(Talent(self.name, talent_name, talent_value))
 
@@ -33,7 +36,7 @@ class TalentGroupEncoder(json.JSONEncoder):
         if isinstance(t, TalentGroup):
             json_talents = []
             for talent in t.talents:
-                json_talents.append(fix_up_json_string(json.dumps(talent, cls=TalentEncoder, ensure_ascii=False)))
+                json_talents.append(fix_up_json_string(json.dumps(talent, cls=TalentEncoder, ensure_ascii=False, separators=(',', ': '), indent=8)))
             return {"class": 'talent_group', "name": t.name, "talents": json_talents}
         else:
             return super().default(t)
