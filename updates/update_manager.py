@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import QWidget
 
-from config import Configuration
+from config.config import Configuration
 
 
 class UpdateManager(QWidget):

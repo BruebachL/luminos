@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QFile, QTextStream
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
@@ -22,6 +22,7 @@ from character.character_manager import CharacterManager
 from character.character import CharacterEncoder
 from character.image_widget import ImageWidget
 from clues.clue_image_widget import ClueImageWidget
+from config.config_widget import ConfigWidget
 from luminos_client.admin_panel import TabbedClientView, AdminPanel
 from clues.clue import Clue
 from clues.clue_manager import ClueManager
@@ -30,7 +31,7 @@ from commands.command import decode_command, InfoRollDice, CommandListenUp, Info
     InfoDiceFile, CommandEncoder, CommandFileRequest, CommandRevealClue, CommandRevealMapOverlay, InfoFileRequest, \
     CommandPlayAudio, CommandUpdateClientInfo, CommandQueryConnectedClients, CommandUpdateClient, CommandPlayStinger, \
     CommandPlayVideo, CommandUpdateCharacter
-from config import Configuration
+from config.config import Configuration
 from dice.dice import Dice
 from dice.dice_manager import DiceManager
 from dice.dice_roll_manager_layout import DiceRollManagerLayout
@@ -106,6 +107,7 @@ class BasicWindow(QWidget):
         self.dice_roll_manager = None
         self.admin_panel = None
         self.update_manager = None
+        self.config_manager = None
         self.layout = QHBoxLayout()
         self.layout_update_permitted = True
         self.video_widget = None
@@ -165,6 +167,7 @@ class BasicWindow(QWidget):
         if self.admin_client:
             self.admin_panel = AdminPanel(self, self.connected_clients)
         self.update_manager = UpdateManager(self, self.base_path)
+        self.config_manager = ConfigWidget(self)
 
         self.video_widget = QVideoWidget()
 
@@ -183,6 +186,7 @@ class BasicWindow(QWidget):
             self.base_layout.addTab(self.admin_panel, "Admin")
             self.base_layout.addTab(StingerControlWidget(self), "Stingers")
         self.base_layout.addTab(self.update_manager, "Updates")
+        self.base_layout.addTab(self.config_manager, "Options")
 
         # Create the main UI screen with two split layouts
         self.layout.addWidget(self.dice_roll_manager)

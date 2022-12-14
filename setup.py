@@ -21,5 +21,6 @@ setuptools.setup(
         python_requires=">=3.9",
         install_requires=[
                 "pyqt5",
+                "qt-material",
                 ],
         )
