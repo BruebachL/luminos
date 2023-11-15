@@ -10,6 +10,7 @@ import traceback
 
 from PyQt5.QtWidgets import QApplication
 
+from audio.audio_info import AudioInfo, decode_audio_info, AudioInfoEncoder
 from audio.audio_manager import AudioManager
 from commands.client_info import ClientInfo
 from clues.clue_manager import ClueManager
@@ -68,7 +69,7 @@ class ThreadedServer(object):
         self.clue_manager = ClueManager(None, base_path)
         self.dice_manager = DiceManager(None, base_path)
         self.map_manager = MapManager(None, base_path)
-        self.audio_manager = AudioManager(None, base_path)
+        self.audio_manager = AudioManager(None, base_path, "Audio", None, AudioInfo, AudioInfoEncoder, decode_audio_info)
         self.video_manager = VideoManager(None, base_path)
         self.update_manager = UpdateManager(None, base_path)
         self.connected_clients = {}
@@ -129,7 +130,7 @@ class ThreadedServer(object):
                                                     "UTF-8"))
                 return None
             case _:
-                print("Unknown command:")
+                print("Unknown command:")  
                 print(cmd)
 
     def get_requested_file_from_managers(self, file_hash, file_type):
@@ -349,5 +350,5 @@ if __name__ == "__main__":
             break
         except ValueError:
             pass
-
+    print(socket.gethostname())
     ThreadedServer(socket.gethostname(), port_num).listen()

@@ -16,7 +16,7 @@ from PyQt5.QtMultimedia import QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QHBoxLayout, QSplashScreen
 
-from audio.audio_info import AudioInfo
+from audio.audio_info import AudioInfo, AudioInfoEncoder, decode_audio_info
 from audio.audio_manager import AudioManager
 from character.character_manager import CharacterManager
 from character.character import CharacterEncoder
@@ -162,7 +162,7 @@ class BasicWindow(QWidget):
         self.map_manager = MapManager(self, self.base_path)
         self.clue_manager = ClueManager(self, self.base_path)
         self.dice_roll_manager = DiceRollManagerLayout(self.output_buffer, self.player, self.dice_manager)
-        self.audio_manager = AudioManager(self, self.base_path)
+        self.audio_manager = AudioManager(self, self.base_path, "audio", None, AudioInfo, AudioInfoEncoder, decode_audio_info)
         self.video_manager = VideoManager(self, self.base_path)
         if self.admin_client:
             self.admin_panel = AdminPanel(self, self.connected_clients)
@@ -402,7 +402,7 @@ class BasicWindow(QWidget):
                 if self.layout_update_permitted:
                     self.map_manager.update_layout()
             case CommandPlayAudio():
-                audio_to_play = self.audio_manager.get_audio_info_for_hash(response.file_hash)
+                audio_to_play = self.audio_manager.get_managed_object_for_hash(response.file_hash)
                 if audio_to_play is None:
                     self.request_audio_from_server(response.file_hash)
                 self.audio_manager.play_audio(response.file_hash)
@@ -479,7 +479,7 @@ class BasicWindow(QWidget):
     def request_audio_from_server(self, clue):
         data, info_response = self.request_file_from_server(clue, "audio:stinger")
         path = self.write_file_to_path(data, self.audio_manager.base_resource_path, info_response)
-        self.audio_manager.audio_clips.append(AudioInfo(info_response.file_hash, path, info_response.file_info.display_name))
+        self.audio_manager.managed_objects.append(AudioInfo(info_response.file_hash, path, info_response.file_info.display_name))
         self.audio_manager.file_hash_map = self.audio_manager.populate_file_hash_map()
         self.audio_manager.detect_unknown_audios()
         if self.layout_update_permitted:
